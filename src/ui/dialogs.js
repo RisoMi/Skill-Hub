@@ -894,6 +894,12 @@
                               data-act="color" data-color="${c}"
                               style="background:${c}" aria-label="选择颜色 ${c}"></button>`
                 ).join("")}
+                <label class="swatch swatch--custom ${
+                  store.MARK_COLORS.indexOf(state.color) < 0 ? "is-active" : ""
+                }" title="自定义颜色">
+                  <input type="color" id="markCustomColor" value="${esc(state.color)}"
+                         aria-label="自定义颜色">
+                </label>
               </div>
             </div>
             ${
@@ -922,6 +928,26 @@
         </div>`;
     }
 
+    /** 只同步色块选中态，不碰输入框 */
+    function syncSwatches() {
+      const box = root.querySelector(".swatches");
+      if (!box) return;
+
+      box.querySelectorAll("[data-color]").forEach((el) => {
+        el.classList.toggle("is-active", el.dataset.color === state.color);
+      });
+
+      const custom = box.querySelector(".swatch--custom");
+      if (custom) {
+        const isPreset = store.MARK_COLORS.indexOf(state.color) >= 0;
+        custom.classList.toggle("is-active", !isPreset);
+        const input = custom.querySelector("input");
+        if (input && input.value.toLowerCase() !== state.color.toLowerCase()) {
+          input.value = state.color;
+        }
+      }
+    }
+
     function save() {
       const name = state.name.trim();
       if (!name) {
@@ -946,7 +972,10 @@
       if (act === "close") return close();
       if (act === "color") {
         state.color = el.dataset.color;
-        return refresh();
+        // 关键：只切色块的选中态，不重绘整个弹窗。
+        // 重绘会重建 input，导致未提交的名称被清空、焦点丢失（表现为闪屏）。
+        syncSwatches();
+        return;
       }
       if (act === "save") return save();
       if (act === "ask-delete") {
@@ -976,6 +1005,14 @@
           e.preventDefault();
           save();
         }
+      });
+    }
+
+    const customColor = document.querySelector("#markCustomColor");
+    if (customColor) {
+      customColor.addEventListener("input", () => {
+        state.color = customColor.value;
+        syncSwatches();
       });
     }
   }

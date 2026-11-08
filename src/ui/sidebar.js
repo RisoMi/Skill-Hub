@@ -68,7 +68,15 @@
       )
       .join("");
 
-    return `<div class="nav-list">${rows}</div>`;
+    return `
+      <button class="nav-cta" data-action="new-skill">
+        ${I.svg("plus", 13)} 新建 SKILL
+      </button>
+      <div class="nav-panel__head">
+        <span></span>
+        <button class="nav-label__action" data-action="add-source">＋ 添加 SKILL 目录</button>
+      </div>
+      <div class="nav-list">${rows}</div>`;
   }
 
   function categoryPanel(ui, counts) {

@@ -481,8 +481,15 @@ html[data-theme="dark"] .btn--primary {
 }
 
 .card.is-active {
-  border-color: var(--accent-bright);
-  background: var(--surface);
+  /* 选中态要一眼可辨：强调边框 + 淡色底 + 外圈光晕，三层叠加 */
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent),
+    var(--shadow-card);
+}
+
+.card.is-active .card__name {
+  color: var(--accent);
 }
 
 .card__top {
@@ -674,7 +681,13 @@ html[data-theme="dark"] .btn--primary {
 }
 
 .skill-row.is-active {
-  box-shadow: inset 2px 0 0 var(--accent-bright);
+  /* 与卡片保持一致的识别方式：左侧强调条 + 淡色底 */
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.skill-row.is-active .skill-row__name {
+  color: var(--accent);
 }
 
 .skill-row__icon {

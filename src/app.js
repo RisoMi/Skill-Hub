@@ -177,8 +177,7 @@
     });
 
     $("importBtn").addEventListener("click", () => SH.dialogs.openImport());
-    $("addSourceBtn").addEventListener("click", () => SH.dialogs.openAddSource());
-    $("newSkillBtn").addEventListener("click", () => SH.dialogs.openNewSkill());
+    // 「添加 SKILL 目录」「新建 SKILL」已移入侧栏来源 tab，由 sidebar 事件委托处理
     $("settingsBtn").addEventListener("click", () => SH.dialogs.openSettings());
     $("rescanBtn").addEventListener("click", rescan);
 
@@ -395,6 +394,8 @@
           store.setTab("files");
           SH.editor && SH.editor.open(target.id, "SKILL.md");
         },
+        // 预览标记编辑弹窗（色板与自定义取色）
+        markedit: () => SH.dialogs.openMarkEditor(),
         // 预览标记效果（两个标记 + 侧栏切到标记栏）
         marked: () => {
           const m1 = SH.store.addMark({ name: "常用", color: "#c0392b" });

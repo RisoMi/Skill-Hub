@@ -1321,3 +1321,43 @@
   flex: 0 0 auto;
   color: var(--accent);
 }
+
+/* 自定义颜色：彩虹底 + 原生取色器 */
+.swatch--custom {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: conic-gradient(
+    from 0deg,
+    #f87171,
+    #fbbf24,
+    #34d399,
+    #60a5fa,
+    #a78bfa,
+    #f472b6,
+    #f87171
+  );
+}
+
+.swatch--custom::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 3px;
+  background: var(--surface);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.swatch--custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
