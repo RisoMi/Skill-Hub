@@ -358,7 +358,9 @@ fn write_skill(
         let dest = backup_root.join(format!("{}-{}", now_millis(), name));
         fs::create_dir_all(&dest).map_err(|e| e.to_string())?;
         copy_dir(&target, &dest)?;
-        fs::remove_dir_all(&target).map_err(|e| e.to_string())?;
+        // 刻意不删除整个目录再重建：扫描时有单文件大小上限（MAX_FILE_BYTES），
+        // 超限的大文件不会出现在 files 列表里，若先 remove_dir_all 会把它们静默丢掉。
+        // 这里只覆盖传入的同名文件，其余原样保留。
     }
 
     fs::create_dir_all(&target).map_err(|e| e.to_string())?;
@@ -401,6 +403,19 @@ fn remove_skill(app: tauri::AppHandle, dir: String) -> Result<String, String> {
     }
 
     Ok(dest.to_string_lossy().to_string())
+}
+
+/// 删除技能目录下的单个文件（清除元数据标记时用）
+#[tauri::command]
+fn delete_skill_file(dir: String, name: String) -> Result<(), String> {
+    if !is_safe_relative(&name) {
+        return Err(format!("非法的文件名：{name}"));
+    }
+    let path = PathBuf::from(&dir).join(&name);
+    if !path.exists() {
+        return Ok(());
+    }
+    fs::remove_file(&path).map_err(|e| format!("删除失败：{e}"))
 }
 
 #[tauri::command]
@@ -592,6 +607,7 @@ pub fn run() {
             pick_directory,
             write_skill,
             remove_skill,
+            delete_skill_file,
             window_action,
             runtime_info,
             export_uninstaller

@@ -86,6 +86,12 @@
       }
     },
 
+    /** 删除技能目录下的单个文件（清除元数据标记） */
+    async deleteSkillFile(dir, name) {
+      if (!isNative) throw new Error("浏览器预览无法操作磁盘");
+      return invoke("delete_skill_file", { dir, name });
+    },
+
     /** macOS：把卸载脚本导出到桌面并在 Finder 中定位 */
     async exportUninstaller() {
       if (!isNative) throw new Error("浏览器预览不可用");

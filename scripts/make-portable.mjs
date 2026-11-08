@@ -17,7 +17,7 @@
  * 用法：node scripts/make-portable.mjs（或 npm run build）
  */
 
-import { existsSync, mkdirSync, copyFileSync, writeFileSync, rmSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, writeFileSync, rmSync, readdirSync, readFileSync, statSync, renameSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,8 +44,42 @@ const outRoot = join(relDir, "portable");
 const appDir = join(outRoot, "Skill Hub Portable");
 const zipPath = join(outRoot, `Skill-Hub-Portable-${version}-windows.zip`);
 
-// 每次重建，避免上一轮的测试数据被误打进 zip
-rmSync(appDir, { recursive: true, force: true });
+/**
+ * 重建输出目录。
+ * 直接 rmSync 整目录有时会被"大批量删除保护"拦截——本地跑过应用后
+ * data/webview 会有上千个 WebView 缓存文件。这里做三级降级，保证打包不被卡住：
+ *   1) 整目录删除
+ *   2) 逐个清理 data 子目录与 exe
+ *   3) 改名让开（旧目录保留，提示用户自行清理）
+ */
+function resetDir(dir) {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+    return "removed";
+  } catch (err) {
+    for (const sub of ["data/webview", "data/backups", "data/trash", "Skill Hub.exe"]) {
+      try {
+        rmSync(join(dir, sub), { recursive: true, force: true });
+      } catch (e) {
+        /* 单项失败就跳过 */
+      }
+    }
+    if (!existsSync(dir)) return "removed";
+
+    const aside = `${dir}.old-${Date.now()}`;
+    try {
+      renameSync(dir, aside);
+      console.warn(`[portable] 旧目录无法删除，已改名保留：${aside}（可手动删除）`);
+      return "renamed";
+    } catch (e) {
+      console.warn("[portable] 旧目录无法清理，将在其基础上覆盖");
+      return "kept";
+    }
+  }
+}
+
+// 每次重建，避免上一轮的运行时数据被误打进 zip
+resetDir(appDir);
 mkdirSync(appDir, { recursive: true });
 
 copyFileSync(exePath, join(appDir, "Skill Hub.exe"));

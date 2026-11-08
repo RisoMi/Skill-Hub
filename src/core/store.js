@@ -28,6 +28,10 @@
     selectedId: null,
     activeTab: "preview",
     activeFile: null,
+    /** 正在编辑的文件名；null 表示只读预览 */
+    editingFile: null,
+    /** 编辑未保存提示 */
+    editDirty: false,
     checked: new Set(),
     lastSync: null,
     pendingUninstall: null,
@@ -73,22 +77,74 @@
 
   let saveTimer = null;
 
+  /**
+   * 持久化用的轻量副本：剥掉正文类大字段
+   * ------------------------------------------------------------
+   * localStorage 每个源的配额约 5MB（按 UTF-16 计），而本机技能正文
+   * 往往是几十 MB（实测 SKILL.md 合计 24.9MB，另有附件）。把 state 全量
+   * 序列化进去必然抛 QuotaExceededError，表现就是每次改动都提示
+   * "本地存储空间不足"。
+   *
+   * 索引只需要够渲染列表与分类：
+   *   - 去掉 skill.content（SKILL.md 正文）
+   *   - 去掉 files[].content（附件正文），保留文件名与大小
+   *   - 去掉 meta.content（原文），保留 meta.data
+   * 正文由启动扫描从磁盘重新读回；编辑后的内容由写盘命令持久化。
+   */
+  function slimSkills(skills) {
+    return (skills || []).map((s) => {
+      const out = Object.assign({}, s);
+      delete out.content;
+      if (Array.isArray(s.files)) {
+        out.files = s.files.map((f) => ({ name: f.name, size: f.size || 0 }));
+      }
+      if (s.meta) {
+        out.meta = Object.assign({}, s.meta);
+        delete out.meta.content;
+      }
+      return out;
+    });
+  }
+
   function persist() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
+      const payload = {
+        sources: state.sources,
+        categories: state.categories,
+        skills: slimSkills(state.skills),
+        syncAt: state.syncAt,
+      };
       try {
-        localStorage.setItem(
-          KEY,
-          JSON.stringify({
-            sources: state.sources,
-            categories: state.categories,
-            skills: state.skills,
-            syncAt: state.syncAt,
-          })
-        );
+        localStorage.setItem(KEY, JSON.stringify(payload));
       } catch (err) {
-        console.warn("[store] 保存失败（可能超出本地存储配额）", err);
-        SH.toast && SH.toast("本地存储空间不足，本次改动可能无法保留", "error");
+        // 兜底一：连索引都放不下（技能数量极多）时退到最小结构，
+        // 至少保住用户自定义的来源与分类。
+        try {
+          const minimal = Object.assign({}, payload, {
+            skills: payload.skills.map((s) => ({
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              categoryId: s.categoryId,
+              sourceId: s.sourceId,
+              version: s.version,
+              updatedAt: s.updatedAt,
+              createdAt: s.createdAt,
+              favorite: s.favorite,
+              exportable: s.exportable,
+              tags: s.tags,
+              path: s.path,
+            })),
+          });
+          localStorage.setItem(KEY, JSON.stringify(minimal));
+          SH.toast &&
+            SH.toast("本地索引较大，已只保留技能基础信息（正文会在重新扫描后恢复）", "warn");
+        } catch (err2) {
+          // 兜底二：彻底放不下，明确告知而不是反复刷错误
+          console.warn("[store] 索引无法写入本地存储", err2);
+          SH.toast && SH.toast("本地索引无法保存，重启后会自动重新扫描，不影响使用", "warn");
+        }
       }
       try {
         localStorage.setItem(PREF_KEY, JSON.stringify(state.prefs));
@@ -685,18 +741,54 @@
     ui.selectedId = id;
     ui.activeTab = "preview";
     ui.activeFile = null;
+    ui.editingFile = null;
+    ui.editDirty = false;
     emit("select");
   }
 
   function setTab(tab) {
     ui.activeTab = tab;
     ui.activeFile = null;
+    ui.editingFile = null;
+    ui.editDirty = false;
     emit("tab");
   }
 
   function openFile(name) {
+    // 切到别的文件时退出编辑态，避免把未保存的草稿带到另一个文件
+    if (ui.editingFile && ui.editingFile !== name) {
+      ui.editingFile = null;
+      ui.editDirty = false;
+    }
     ui.activeFile = name;
     emit("file");
+  }
+
+  /** 进入文件编辑态 */
+  function beginEditFile(name) {
+    const skill = getSkill(ui.selectedId);
+    if (!skill) return false;
+    const target = name || ui.activeFile;
+    if (!target) return false;
+    ui.activeFile = target;
+    ui.editingFile = target;
+    ui.editDirty = false;
+    emit("file-edit");
+    return true;
+  }
+
+  function cancelEditFile() {
+    ui.editingFile = null;
+    ui.editDirty = false;
+    emit("file-edit");
+  }
+
+  function setEditDirty(dirty) {
+    ui.editDirty = !!dirty;
+    // 只更新提示，不重渲染，避免输入框失焦
+    const el = document.getElementById("editDirtyHint");
+    if (el) el.textContent = dirty ? "未保存" : "已保存";
+    if (el) el.classList.toggle("is-dirty", !!dirty);
   }
 
   function toggleCheck(id) {
@@ -996,9 +1088,92 @@
   }
 
   /** 写入或清除单个 SKILL 的来源标记 */
-  function setSkillMeta(skillId, meta) {
+  /**
+   * 把一个技能的完整文件集合写到它所在目录。
+   * 后端会先整目录备份再逐个覆盖同名文件（不删除其他文件）。
+   * @returns {Promise<{ok:boolean, reason?:string}>}
+   */
+  async function writeSkillFiles(skill) {
+    const native = SH.native;
+    if (!native || !native.isNative) {
+      return { ok: false, reason: "浏览器预览无法写入磁盘，请用桌面版" };
+    }
+    const src = getSource(skill.sourceId);
+    const root = (src && src.nativePath) || null;
+    if (!root) {
+      return { ok: false, reason: "该技能没有关联的真实目录（可能来自导入包）" };
+    }
+
+    const files = (skill.files || [])
+      .filter((f) => typeof f.content === "string")
+      .map((f) => ({ name: f.name, content: f.content }));
+    if (!files.some((f) => /^SKILL\.md$/i.test(f.name))) {
+      files.unshift({ name: "SKILL.md", content: skill.content || "" });
+    }
+    if (skill.meta && skill.meta.fileName && skill.meta.content) {
+      if (!files.some((f) => f.name === skill.meta.fileName)) {
+        files.push({ name: skill.meta.fileName, content: skill.meta.content });
+      }
+    }
+
+    try {
+      await native.writeSkill(root, skill.name, files);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, reason: String((err && err.message) || err) };
+    }
+  }
+
+  /**
+   * 保存单个文件（新增或修改），改内存后立即尝试落盘。
+   * 落盘失败不影响内存中的编辑结果，由调用方按 persisted 决定提示语气。
+   */
+  async function saveSkillFile(skillId, fileName, content) {
     const skill = getSkill(skillId);
     if (!skill) return { ok: false, reason: "技能不存在" };
+
+    const name = String(fileName || "").trim().replace(/\\/g, "/");
+    if (!name) return { ok: false, reason: "文件名不能为空" };
+    if (name.startsWith("/") || name.split("/").includes("..")) {
+      return { ok: false, reason: "文件名不合法" };
+    }
+
+    skill.files = Array.isArray(skill.files) ? skill.files : [];
+    const text = content == null ? "" : String(content);
+    const hit = skill.files.find((f) => f.name === name);
+    if (hit) {
+      hit.content = text;
+      hit.size = SH.util.byteLength(text);
+    } else {
+      skill.files.push({ name, content: text, size: SH.util.byteLength(text) });
+    }
+    // SKILL.md 是主文件，正文同时写回 skill.content（预览与导出都读它）
+    if (/^SKILL\.md$/i.test(name)) skill.content = text;
+    skill.updatedAt = Date.now();
+
+    persist();
+    emit("file-saved");
+
+    const res = await writeSkillFiles(skill);
+    return {
+      ok: true,
+      created: !hit,
+      fileName: name,
+      persisted: !!res.ok,
+      reason: res.reason,
+    };
+  }
+
+  /**
+   * 保存/清除元数据标记，并持久化到磁盘上的 _*_meta.json。
+   * 清除时会把对应文件一并删掉，否则重启扫描又会被读回来。
+   */
+  async function setSkillMeta(skillId, meta) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+
+    const oldFile = skill.meta && skill.meta.fileName ? skill.meta.fileName : null;
+
     if (!meta) {
       skill.meta = null;
     } else {
@@ -1010,10 +1185,29 @@
         content: meta.content || `${JSON.stringify(data, null, 2)}\n`,
       };
     }
+
     // 元数据变更不算内容变更，不动 updatedAt，避免列表顺序突然跳动
     persist();
     emit("meta");
-    return { ok: true };
+
+    // 清除：删除磁盘上的标记文件；保存：按当前内容写盘
+    const native = SH.native;
+    if (!native || !native.isNative) {
+      return { ok: true, persisted: false, reason: "浏览器预览无法写入磁盘，请用桌面版" };
+    }
+
+    if (!skill.meta) {
+      if (!oldFile || !skill.nativeDir) return { ok: true, persisted: true };
+      try {
+        await native.deleteSkillFile(skill.nativeDir, oldFile);
+        return { ok: true, persisted: true, removed: oldFile };
+      } catch (err) {
+        return { ok: true, persisted: false, reason: String((err && err.message) || err) };
+      }
+    }
+
+    const res = await writeSkillFiles(skill);
+    return { ok: true, persisted: !!res.ok, reason: res.reason };
   }
 
   function removeSkill(id) {
@@ -1084,6 +1278,9 @@
     selectSkill,
     setTab,
     openFile,
+    beginEditFile,
+    cancelEditFile,
+    setEditDirty,
     toggleCheck,
     setChecked,
     clearChecks,
@@ -1099,6 +1296,8 @@
     importSkills,
     rescan,
     setSkillMeta,
+    saveSkillFile,
+    writeSkillFiles,
     removeSkill,
     resetData,
     setPref,

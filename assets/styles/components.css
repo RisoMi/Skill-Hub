@@ -1083,6 +1083,117 @@ html[data-theme="dark"] .btn--primary {
 }
 
 /* 文件清单 */
+/* 文件区顶部操作条 */
+.file-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.file-bar__label {
+  font-size: var(--fs-mini);
+  color: var(--text-3);
+}
+
+.file-bar__add {
+  padding: 3px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-btn);
+  font-size: var(--fs-mini);
+  color: var(--text-2);
+  background: var(--surface);
+  transition: border-color 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+.file-bar__add:hover {
+  border-color: var(--accent-bright);
+  color: var(--accent);
+}
+
+.file-empty,
+.file-hint {
+  padding: 16px 12px;
+  font-size: var(--fs-mini);
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* 编辑态 */
+.file-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.file-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.file-editor__name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mini);
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.file-editor__state {
+  font-size: 10px;
+  color: var(--text-4);
+}
+
+.file-editor__state.is-dirty {
+  color: var(--warn, #c98a2e);
+}
+
+.file-editor__area {
+  width: 100%;
+  min-height: 180px;
+  /* 不能太高：详情面板底部有常驻的浮动按钮（复制路径 / 导出），
+     编辑器一旦把操作条顶出去，保存按钮就会被盖住 */
+  max-height: 34vh;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  resize: vertical;
+  outline: none;
+}
+
+.file-editor__area:focus {
+  border-color: var(--accent-bright);
+  box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.file-editor__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-editor__tip {
+  flex: 1;
+  font-size: 10px;
+  color: var(--text-4);
+}
+
+.file-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 12px 0 8px;
+}
+
 .file-list {
   display: flex;
   flex-direction: column;

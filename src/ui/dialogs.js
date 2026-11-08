@@ -344,6 +344,22 @@
             </div>
 
             <div class="field">
+              <span class="field__label">目录结构</span>
+              <div class="summary-bar" style="margin:0">
+                ${I.svg("folder", 14)}
+                <span>${
+                  skills.length === 1
+                    ? `单个导出：<code>${esc(
+                        skills[0].name
+                      )}/SKILL.md</code>（根目录直接是技能文件夹）`
+                    : `批量导出：<code>skills/${
+                        skills.length
+                      } 个技能各自一个文件夹</code>`
+                }</span>
+              </div>
+            </div>
+
+            <div class="field">
               <span class="field__label">保存位置</span>
               <div class="path-box">
                 ${I.svg("folder", 15)}
@@ -836,6 +852,104 @@
                  data-act="color" data-value="${c}" style="background:${c}"
                  title="${c}" aria-label="颜色 ${c}"></button>`
     ).join("")}</div>`;
+  }
+
+  /**
+   * 新建文件：填相对路径 → 创建空文件 → 直接进入编辑态
+   */
+  function openNewFile(skillId) {
+    const skill = store.getSkill(skillId);
+    if (!skill) return;
+    const state = { name: "", error: "" };
+
+    function render() {
+      return `
+        <div class="dialog dialog--xs" role="dialog" aria-modal="true" aria-label="新建文件">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">新建文件</h2>
+              <p class="dialog__subtitle">路径相对技能目录，可以带子目录</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <div class="field">
+              <span class="field__label">文件路径</span>
+              <input class="input input--mono" id="newFileName" maxlength="120"
+                     placeholder="references/notes.md"
+                     value="${esc(state.name)}" autocomplete="off" spellcheck="false">
+              <span class="field__help">示例：references/checklist.md、templates/report.md</span>
+            </div>
+            ${
+              state.error
+                ? `<p class="field__help" style="color:var(--danger,#c0392b)">${esc(
+                    state.error
+                  )}</p>`
+                : ""
+            }
+          </div>
+          <div class="dialog__foot">
+            <div class="dialog__foot-hint"></div>
+            <div class="dialog__btns">
+              <button class="btn btn--outline" data-act="close">取消</button>
+              <button class="btn btn--primary" data-act="create">创建并编辑</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+      if (act === "close") return close();
+
+      if (act === "create") {
+        const input = document.querySelector("#newFileName");
+        const raw = (input ? input.value : state.name).trim().replace(/\\/g, "/");
+        state.name = raw;
+
+        if (!raw) {
+          state.error = "请填写文件名";
+          return refresh();
+        }
+        if (raw.startsWith("/") || raw.split("/").includes("..")) {
+          state.error = "路径不能以 / 开头，也不能包含 ..";
+          return refresh();
+        }
+        if ((skill.files || []).some((f) => f.name === raw)) {
+          state.error = "同名文件已存在，请直接选中它编辑";
+          return refresh();
+        }
+
+        close();
+        store.saveSkillFile(skillId, raw, "").then((res) => {
+          if (!res.ok) {
+            SH.toast(res.reason || "创建失败", "error");
+            return;
+          }
+          store.beginEditFile(raw);
+          SH.toast(`已创建 ${raw}，编辑后点保存`, "ok");
+        });
+        return;
+      }
+    }
+
+    mount(render, handler);
+
+    const input = document.querySelector("#newFileName");
+    if (input) {
+      input.focus();
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          // 触发真实按钮点击，走同一套事件委托
+          const btn = document.querySelector('[data-act="create"]');
+          if (btn) btn.click();
+        }
+      });
+    }
   }
 
   function openCategoryEditor(categoryId) {
@@ -1379,7 +1493,7 @@
       }
 
       const content = `${JSON.stringify(data, null, 2)}\n`;
-      const res = store.setSkillMeta(skill.id, {
+      const res = await store.setSkillMeta(skill.id, {
         formatId: fmt.id,
         fileName: fmt.fileName,
         data,
@@ -1392,13 +1506,21 @@
         return refresh();
       }
       close();
-      SH.toast(`已保存 ${fmt.fileName}`, "ok");
+      if (res.persisted) {
+        SH.toast(`已保存 ${fmt.fileName}`, "ok");
+      } else {
+        SH.toast(`已更新索引，但未写入磁盘：${res.reason || "未知原因"}`, "warn");
+      }
     }
 
-    function removeMeta() {
-      store.setSkillMeta(skill.id, null);
+    async function removeMeta() {
+      const res = await store.setSkillMeta(skill.id, null);
       close();
-      SH.toast("已移除来源标记", "ok");
+      if (res.persisted) {
+        SH.toast("已删除标记文件", "ok");
+      } else {
+        SH.toast(`已从索引移除，但删除文件失败：${res.reason || "未知原因"}`, "warn");
+      }
     }
 
     function handler(event) {
@@ -2057,6 +2179,7 @@
     openExport,
     openImport,
     openAddSource,
+    openNewFile,
     openCategoryEditor,
     openSourceEditor,
     openMetaEditor,

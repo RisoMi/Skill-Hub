@@ -359,6 +359,11 @@
           }
           SH.dialogs.openExport(ids);
         },
+        // 批量导出预览（3 个技能，用来对比目录结构差异）
+        exportbatch: () => {
+          const ids = store.filteredSkills().slice(0, 3).map((s) => s.id);
+          if (ids.length) SH.dialogs.openExport(ids);
+        },
         add: () => SH.dialogs.openAddSource(),
         settings: () => SH.dialogs.openSettings(),
         // 预览两个平台的设置面板（浏览器里没有 SH.runtime，这里造一份）
@@ -376,6 +381,21 @@
             ],
           };
           SH.dialogs.openSettings();
+        },
+        // 预览文件编辑态
+        fileedit: () => {
+          const list = store.filteredSkills();
+          const target =
+            list.find((s) => (s.files || []).some((f) => /^SKILL\.md$/i.test(f.name))) ||
+            list[0];
+          if (!target) return;
+          store.selectSkill(target.id);
+          store.setTab("files");
+          const md = (target.files || []).find((f) => /^SKILL\.md$/i.test(f.name));
+          const name = md ? md.name : (target.files || [])[0] && (target.files || [])[0].name;
+          if (!name) return;
+          store.openFile(name);
+          store.beginEditFile(name);
         },
         settingswin: () => {
           SH.runtime = {

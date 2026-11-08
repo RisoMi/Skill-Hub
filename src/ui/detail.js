@@ -43,32 +43,61 @@
 
   function filesHtml(skill) {
     const files = skill.files || [];
-    if (!files.length) {
-      return C.emptyHtml({
-        title: "没有关联文件",
-        text: "这个 SKILL 只有 SKILL.md 主文件，没有被引用的模板或说明。",
-      });
-    }
     const activeName = store.ui.activeFile;
+    const editing = store.ui.editingFile;
     const active = files.find((f) => f.name === activeName) || null;
 
-    const list = files
-      .map(
-        (f) => `
+    const head = `
+      <div class="file-bar">
+        <span class="file-bar__label">${files.length} 个文件</span>
+        <button class="file-bar__add" data-action="new-file">＋ 新建文件</button>
+      </div>`;
+
+    const list = files.length
+      ? files
+          .map(
+            (f) => `
         <button class="file-item ${f.name === activeName ? "is-active" : ""}"
                 data-action="file" data-file="${esc(f.name)}">
           ${I.svg("file", 13)}
           <span class="truncate">${esc(f.name)}</span>
-          <span class="file-item__size">${esc(fmtBytes(f.size || SH.util.byteLength(f.content || "")))}</span>
+          <span class="file-item__size">${esc(
+            fmtBytes(f.size || SH.util.byteLength(f.content || ""))
+          )}</span>
         </button>`
-      )
-      .join("");
+          )
+          .join("")
+      : `<div class="file-empty">还没有关联文件</div>`;
 
-    let preview = "";
-    if (active) {
+    let body = "";
+    if (!active) {
+      body = `<div class="file-hint">${
+        files.length ? "选择一个文件查看或编辑" : "点右上角「新建文件」添加一个"
+      }</div>`;
+    } else if (editing === active.name) {
+      body = `
+        <div class="file-editor">
+          <div class="file-editor__head">
+            <span class="file-editor__name">${esc(active.name)}</span>
+            <span class="file-editor__state" id="editDirtyHint">已保存</span>
+          </div>
+          <textarea class="file-editor__area" id="fileEditor" spellcheck="false"
+                    placeholder="在这里编辑文件内容">${esc(active.content || "")}</textarea>
+          <div class="file-editor__bar">
+            <span class="file-editor__tip">保存前会自动备份原目录</span>
+            <button class="btn btn--outline btn--sm" data-action="cancel-edit">取消</button>
+            <button class="btn btn--primary btn--sm" data-action="save-file">保存</button>
+          </div>
+        </div>`;
+    } else {
       const isMd = /\.md$/i.test(active.name);
-      preview = `
+      body = `
         <div class="file-preview">
+          <div class="file-preview__head">
+            <span class="file-editor__name">${esc(active.name)}</span>
+            <button class="btn btn--outline btn--sm" data-action="edit-file"
+                    data-file="${esc(active.name)}">编辑</button>
+          </div>
           ${
             isMd
               ? `<div class="md">${SH.md.render(
@@ -79,7 +108,7 @@
         </div>`;
     }
 
-    return `<div class="file-list">${list}</div>${preview}`;
+    return `${head}<div class="file-list">${list}</div>${body}`;
   }
 
   function metaHtml(skill) {
@@ -444,6 +473,41 @@
       return;
     }
 
+    if (action === "new-file") {
+      SH.dialogs && SH.dialogs.openNewFile(skill.id);
+      return;
+    }
+
+    if (action === "edit-file") {
+      store.beginEditFile(el.dataset.file || store.ui.activeFile);
+      return;
+    }
+
+    if (action === "cancel-edit") {
+      store.cancelEditFile();
+      return;
+    }
+
+    if (action === "save-file") {
+      const area = document.getElementById("fileEditor");
+      const name = store.ui.editingFile;
+      if (!area || !name) return;
+      const targetId = skill.id;
+      store.saveSkillFile(targetId, name, area.value).then((res) => {
+        if (!res.ok) {
+          SH.toast(res.reason || "保存失败", "error");
+          return;
+        }
+        store.cancelEditFile();
+        if (res.persisted) {
+          SH.toast(`已保存 ${res.fileName}${res.created ? "（新建）" : ""}`, "ok");
+        } else {
+          SH.toast(`已更新 ${res.fileName}，但未写入磁盘：${res.reason || ""}`, "warn");
+        }
+      });
+      return;
+    }
+
     if (action === "edit-meta") {
       SH.dialogs && SH.dialogs.openMetaEditor(skill.id);
       return;
@@ -464,6 +528,12 @@
 
   function init() {
     panel.addEventListener("click", onClick);
+    // 编辑文件时实时标记未保存状态（只改提示文字，不重渲染以免失焦）
+    panel.addEventListener("input", (event) => {
+      if (event.target && event.target.id === "fileEditor") {
+        store.setEditDirty(true);
+      }
+    });
     // 窄屏下点选技能自动展开面板
     store.subscribe((reason) => {
       if (reason === "select" && window.innerWidth <= 1180) {

@@ -227,11 +227,22 @@
     );
   }
 
+  /**
+   * 导出目录结构随模式变化：
+   *   单个导出 → <skill.name>/SKILL.md        根目录直接就是技能文件夹
+   *   批量导出 → skills/<skill.name>/SKILL.md 统一收进 skills/
+   * 按传入技能数量判定，避免调用方漏传参数时结构错乱。
+   */
+  function folderPrefix(skills) {
+    return skills.length === 1 ? "" : "skills/";
+  }
+
   async function buildEntries(skills, options) {
     const entries = [];
+    const prefix = folderPrefix(skills);
 
     for (const skill of skills) {
-      const folder = `skills/${skill.name}`;
+      const folder = `${prefix}${skill.name}`;
       if (options.includeSkillFile) {
         entries.push({
           name: `${folder}/SKILL.md`,
@@ -246,15 +257,17 @@
         });
       }
       if (options.includeMeta) {
-        // 沿用包里已有的标记，或按当前选定的 Agent 格式重新生成
+        // 技能目录里已经带了标记文件时，一律原样复用，不再重新生成一份覆盖它。
+        // 只有明确关掉复用（metaReuse === false）才按选定格式重写。
+        const existing = skill.meta && skill.meta.fileName ? skill.meta : null;
+        const reuse = options.metaReuse !== false && existing;
         let built;
-        if (options.metaReuse && skill.meta && skill.meta.content) {
-          built = { fileName: skill.meta.fileName, content: skill.meta.content };
-        } else if (options.metaReuse && skill.meta && skill.meta.data) {
-          built = {
-            fileName: skill.meta.fileName,
-            content: `${JSON.stringify(skill.meta.data, null, 2)}\n`,
-          };
+        if (reuse) {
+          const raw =
+            typeof existing.content === "string" && existing.content.trim()
+              ? existing.content
+              : `${JSON.stringify(existing.data || {}, null, 2)}\n`;
+          built = { fileName: existing.fileName, content: raw };
         } else {
           // eslint-disable-next-line no-await-in-loop
           built = await SH.meta.build(skill, options.metaFormatId, options.metaOptions || {});
@@ -317,14 +330,33 @@
     return { blob, filename: fileNameFor("zip"), bytes };
   }
 
+  /** 标记文件：下划线开头的 json（_skillhub_meta / _user_meta / _meta 等） */
+  function isMetaFile(name) {
+    return /^_.*\.json$/i.test(name);
+  }
+
+  async function fileExists(dirHandle, fileName) {
+    try {
+      await dirHandle.getFileHandle(fileName);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
   /** 用 File System Access API 写目录；不支持时抛错由调用方降级 */
   async function exportFolder(skills, options) {
     if (!window.showDirectoryPicker) {
       throw new Error("当前浏览器不支持直接写目录，请改用 ZIP 格式导出");
     }
     const root = await window.showDirectoryPicker({ mode: "readwrite" });
-    const base = await root.getDirectoryHandle(fileNameFor("folder"), { create: true });
+    // 只算一次：跨秒重复调用会得到两个不同的时间戳目录名
+    const folderName = fileNameFor("folder");
+    const base = await root.getDirectoryHandle(folderName, { create: true });
     const entries = await buildEntries(skills, options);
+
+    let written = 0;
+    let skipped = 0;
 
     for (const entry of entries) {
       const parts = entry.name.split("/");
@@ -333,13 +365,21 @@
       for (const part of parts) {
         dir = await dir.getDirectoryHandle(part, { create: true });
       }
+
+      // 目标位置已有同名标记文件时，复用原文件而不是覆盖
+      if (isMetaFile(fileName) && (await fileExists(dir, fileName))) {
+        skipped += 1;
+        continue;
+      }
+
       const handle = await dir.getFileHandle(fileName, { create: true });
       const writable = await handle.createWritable();
       await writable.write(entry.content);
       await writable.close();
+      written += 1;
     }
 
-    return { folderName: fileNameFor("folder") };
+    return { folderName, written, skipped };
   }
 
   SH.io = { parseSelection, exportZip, exportFolder, buildEntries, estimate };
