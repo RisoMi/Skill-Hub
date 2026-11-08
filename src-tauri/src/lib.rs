@@ -94,23 +94,27 @@ fn parse_loose_json(text: &str) -> Option<serde_json::Value> {
     if let Ok(v) = serde_json::from_str::<serde_json::Value>(text) {
         return Some(v);
     }
+    // 容错：去掉尾随逗号后再解析。
+    // 必须按 char 处理——按字节遍历会把 UTF-8 多字节字符拆成 Latin-1 乱码，
+    // 而真实 _skillhub_meta.json 里的 name 常常是中文，且带尾随逗号必然走这条路。
     let cleaned: String = {
-        let bytes = text.trim_start_matches('\u{feff}').as_bytes();
-        let mut out = String::with_capacity(bytes.len());
+        let src = text.trim_start_matches('\u{feff}');
+        let chars: Vec<char> = src.chars().collect();
+        let mut out = String::with_capacity(src.len());
         let mut i = 0;
-        while i < bytes.len() {
-            let b = bytes[i];
-            if b == b',' {
+        while i < chars.len() {
+            let ch = chars[i];
+            if ch == ',' {
                 let mut j = i + 1;
-                while j < bytes.len() && (bytes[j] as char).is_whitespace() {
+                while j < chars.len() && chars[j].is_whitespace() {
                     j += 1;
                 }
-                if j < bytes.len() && (bytes[j] == b']' || bytes[j] == b'}') {
+                if j < chars.len() && (chars[j] == ']' || chars[j] == '}') {
                     i += 1;
                     continue;
                 }
             }
-            out.push(b as char);
+            out.push(ch);
             i += 1;
         }
         out
@@ -594,4 +598,40 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("无法启动 Skill Hub");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 回归：带尾随逗号 + 中文的真实 _skillhub_meta.json
+    /// 旧实现按字节 push(b as char)，中文会变成 Latin-1 乱码
+    #[test]
+    fn loose_json_preserves_chinese() {
+        let src = "{\n  \"name\": \"虚拟数字人林知夏\",\n  \"tags\": [\"a\", \"b\",],\n}";
+        let v = parse_loose_json(src).expect("带尾随逗号且含中文的 JSON 应能解析");
+        assert_eq!(v["name"], serde_json::json!("虚拟数字人林知夏"));
+        assert_eq!(v["tags"][1], serde_json::json!("b"));
+    }
+
+    #[test]
+    fn strict_json_still_works() {
+        let v = parse_loose_json(r#"{"name":"中文测试"}"#).unwrap();
+        assert_eq!(v["name"], serde_json::json!("中文测试"));
+    }
+
+    #[test]
+    fn only_trailing_commas_removed() {
+        let v = parse_loose_json(r#"{"a":1,"b":[1,2,],}"#).unwrap();
+        assert_eq!(v["a"], serde_json::json!(1));
+        assert_eq!(v["b"][1], serde_json::json!(2));
+    }
+
+    /// 逗号后面跟的是普通值时必须保留，不能被当尾随逗号吃掉
+    #[test]
+    fn keeps_normal_commas() {
+        let v = parse_loose_json(r#"{"a":1,"b":2}"#).unwrap();
+        assert_eq!(v["a"], serde_json::json!(1));
+        assert_eq!(v["b"], serde_json::json!(2));
+    }
 }

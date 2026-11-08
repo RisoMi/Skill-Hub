@@ -1,6 +1,6 @@
 {
   "name": "skill-hub",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "跨平台 SKILL 统一管理器（Windows / macOS）",
   "scripts": {

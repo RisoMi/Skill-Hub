@@ -438,6 +438,11 @@
     const nextSkills = [];
     const touched = [];
 
+    // 上一次扫描的结果，用来给同名同源的技能沿用原 id（见下方赋值处）
+    const prevByKey = new Map(
+      state.skills.map((s) => [`${s.sourceId}::${String(s.name).toLowerCase()}`, s])
+    );
+
     usable.forEach((root) => {
       let sourceId = sourceIdForPath(root.path);
 
@@ -473,6 +478,17 @@
         const skill = SH.native.toSkill(scanned, sourceId);
         skill.categoryId = guessCategory(skill.name, skill.description);
         skill.exportable = !(getSource(sourceId) || {}).readonly;
+
+        // toSkill() 不带 id。少了它，卡片的 data-id 会变成 "undefined"，
+        // 选中和勾选都会找不到技能（表现为右侧空白、勾选框不亮）。
+        // 同名同源的沿用旧 id，保证重启后按 id 关联的状态（收藏等）不丢。
+        // 注意要判 prev.id 本身是否存在：修复前落盘的老数据 id 就是 undefined，
+        // 直接沿用会把 undefined 继续传下去。
+        const key = `${sourceId}::${String(skill.name).toLowerCase()}`;
+        const prev = prevByKey.get(key);
+        skill.id = prev && prev.id ? prev.id : uid("sk");
+        if (prev && prev.favorite) skill.favorite = true;
+
         nextSkills.push(skill);
       });
     });
