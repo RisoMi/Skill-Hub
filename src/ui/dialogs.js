@@ -854,104 +854,6 @@
     ).join("")}</div>`;
   }
 
-  /**
-   * 新建文件：填相对路径 → 创建空文件 → 直接进入编辑态
-   */
-  function openNewFile(skillId) {
-    const skill = store.getSkill(skillId);
-    if (!skill) return;
-    const state = { name: "", error: "" };
-
-    function render() {
-      return `
-        <div class="dialog dialog--xs" role="dialog" aria-modal="true" aria-label="新建文件">
-          <div class="dialog__head">
-            <div class="dialog__title-group">
-              <h2 class="dialog__title">新建文件</h2>
-              <p class="dialog__subtitle">路径相对技能目录，可以带子目录</p>
-            </div>
-            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
-          </div>
-          <div class="hline" style="height:1px;background:var(--line)"></div>
-          <div class="dialog__body">
-            <div class="field">
-              <span class="field__label">文件路径</span>
-              <input class="input input--mono" id="newFileName" maxlength="120"
-                     placeholder="references/notes.md"
-                     value="${esc(state.name)}" autocomplete="off" spellcheck="false">
-              <span class="field__help">示例：references/checklist.md、templates/report.md</span>
-            </div>
-            ${
-              state.error
-                ? `<p class="field__help" style="color:var(--danger,#c0392b)">${esc(
-                    state.error
-                  )}</p>`
-                : ""
-            }
-          </div>
-          <div class="dialog__foot">
-            <div class="dialog__foot-hint"></div>
-            <div class="dialog__btns">
-              <button class="btn btn--outline" data-act="close">取消</button>
-              <button class="btn btn--primary" data-act="create">创建并编辑</button>
-            </div>
-          </div>
-        </div>`;
-    }
-
-    function handler(event) {
-      const el = event.target.closest("[data-act]");
-      if (!el) return;
-      const act = el.dataset.act;
-      if (act === "close") return close();
-
-      if (act === "create") {
-        const input = document.querySelector("#newFileName");
-        const raw = (input ? input.value : state.name).trim().replace(/\\/g, "/");
-        state.name = raw;
-
-        if (!raw) {
-          state.error = "请填写文件名";
-          return refresh();
-        }
-        if (raw.startsWith("/") || raw.split("/").includes("..")) {
-          state.error = "路径不能以 / 开头，也不能包含 ..";
-          return refresh();
-        }
-        if ((skill.files || []).some((f) => f.name === raw)) {
-          state.error = "同名文件已存在，请直接选中它编辑";
-          return refresh();
-        }
-
-        close();
-        store.saveSkillFile(skillId, raw, "").then((res) => {
-          if (!res.ok) {
-            SH.toast(res.reason || "创建失败", "error");
-            return;
-          }
-          store.beginEditFile(raw);
-          SH.toast(`已创建 ${raw}，编辑后点保存`, "ok");
-        });
-        return;
-      }
-    }
-
-    mount(render, handler);
-
-    const input = document.querySelector("#newFileName");
-    if (input) {
-      input.focus();
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          // 触发真实按钮点击，走同一套事件委托
-          const btn = document.querySelector('[data-act="create"]');
-          if (btn) btn.click();
-        }
-      });
-    }
-  }
-
   function openCategoryEditor(categoryId) {
     const editing = categoryId ? store.getCategory(categoryId) : null;
     const state = {
@@ -2179,7 +2081,6 @@
     openExport,
     openImport,
     openAddSource,
-    openNewFile,
     openCategoryEditor,
     openSourceEditor,
     openMetaEditor,

@@ -28,10 +28,6 @@
     selectedId: null,
     activeTab: "preview",
     activeFile: null,
-    /** 正在编辑的文件名；null 表示只读预览 */
-    editingFile: null,
-    /** 编辑未保存提示 */
-    editDirty: false,
     checked: new Set(),
     lastSync: null,
     pendingUninstall: null,
@@ -741,54 +737,18 @@
     ui.selectedId = id;
     ui.activeTab = "preview";
     ui.activeFile = null;
-    ui.editingFile = null;
-    ui.editDirty = false;
     emit("select");
   }
 
   function setTab(tab) {
     ui.activeTab = tab;
     ui.activeFile = null;
-    ui.editingFile = null;
-    ui.editDirty = false;
     emit("tab");
   }
 
   function openFile(name) {
-    // 切到别的文件时退出编辑态，避免把未保存的草稿带到另一个文件
-    if (ui.editingFile && ui.editingFile !== name) {
-      ui.editingFile = null;
-      ui.editDirty = false;
-    }
     ui.activeFile = name;
     emit("file");
-  }
-
-  /** 进入文件编辑态 */
-  function beginEditFile(name) {
-    const skill = getSkill(ui.selectedId);
-    if (!skill) return false;
-    const target = name || ui.activeFile;
-    if (!target) return false;
-    ui.activeFile = target;
-    ui.editingFile = target;
-    ui.editDirty = false;
-    emit("file-edit");
-    return true;
-  }
-
-  function cancelEditFile() {
-    ui.editingFile = null;
-    ui.editDirty = false;
-    emit("file-edit");
-  }
-
-  function setEditDirty(dirty) {
-    ui.editDirty = !!dirty;
-    // 只更新提示，不重渲染，避免输入框失焦
-    const el = document.getElementById("editDirtyHint");
-    if (el) el.textContent = dirty ? "未保存" : "已保存";
-    if (el) el.classList.toggle("is-dirty", !!dirty);
   }
 
   function toggleCheck(id) {
@@ -1278,9 +1238,6 @@
     selectSkill,
     setTab,
     openFile,
-    beginEditFile,
-    cancelEditFile,
-    setEditDirty,
     toggleCheck,
     setChecked,
     clearChecks,

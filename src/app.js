@@ -383,6 +383,7 @@
           SH.dialogs.openSettings();
         },
         // 预览文件编辑态
+        // 预览独立编辑模式
         fileedit: () => {
           const list = store.filteredSkills();
           const target =
@@ -391,11 +392,7 @@
           if (!target) return;
           store.selectSkill(target.id);
           store.setTab("files");
-          const md = (target.files || []).find((f) => /^SKILL\.md$/i.test(f.name));
-          const name = md ? md.name : (target.files || [])[0] && (target.files || [])[0].name;
-          if (!name) return;
-          store.openFile(name);
-          store.beginEditFile(name);
+          SH.editor && SH.editor.open(target.id, "SKILL.md");
         },
         settingswin: () => {
           SH.runtime = {

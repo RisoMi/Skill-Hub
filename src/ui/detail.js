@@ -44,13 +44,14 @@
   function filesHtml(skill) {
     const files = skill.files || [];
     const activeName = store.ui.activeFile;
-    const editing = store.ui.editingFile;
     const active = files.find((f) => f.name === activeName) || null;
 
     const head = `
       <div class="file-bar">
         <span class="file-bar__label">${files.length} 个文件</span>
-        <button class="file-bar__add" data-action="new-file">＋ 新建文件</button>
+        <button class="file-bar__add" data-action="open-editor">
+          ${I.svg("pencil", 12)} 在编辑器中打开
+        </button>
       </div>`;
 
     const list = files.length
@@ -72,34 +73,19 @@
     let body = "";
     if (!active) {
       body = `<div class="file-hint">${
-        files.length ? "选择一个文件查看或编辑" : "点右上角「新建文件」添加一个"
+        files.length ? "选择一个文件查看内容" : "点上方「在编辑器中打开」新建文件"
       }</div>`;
-    } else if (editing === active.name) {
-      body = `
-        <div class="file-editor">
-          <div class="file-editor__head">
-            <span class="file-editor__name">${esc(active.name)}</span>
-            <span class="file-editor__state" id="editDirtyHint">已保存</span>
-          </div>
-          <textarea class="file-editor__area" id="fileEditor" spellcheck="false"
-                    placeholder="在这里编辑文件内容">${esc(active.content || "")}</textarea>
-          <div class="file-editor__bar">
-            <span class="file-editor__tip">保存前会自动备份原目录</span>
-            <button class="btn btn--outline btn--sm" data-action="cancel-edit">取消</button>
-            <button class="btn btn--primary btn--sm" data-action="save-file">保存</button>
-          </div>
-        </div>`;
     } else {
-      const isMd = /\.md$/i.test(active.name);
+      const md = /\.md$/i.test(active.name);
       body = `
         <div class="file-preview">
           <div class="file-preview__head">
             <span class="file-editor__name">${esc(active.name)}</span>
-            <button class="btn btn--outline btn--sm" data-action="edit-file"
-                    data-file="${esc(active.name)}">编辑</button>
+            <button class="btn btn--outline btn--sm" data-action="open-editor"
+                    data-file="${esc(active.name)}">${I.svg("pencil", 12)} 编辑此文件</button>
           </div>
           ${
-            isMd
+            md
               ? `<div class="md">${SH.md.render(
                   SH.md.splitFrontmatter(active.content || "").body
                 )}</div>`
@@ -473,38 +459,10 @@
       return;
     }
 
-    if (action === "new-file") {
-      SH.dialogs && SH.dialogs.openNewFile(skill.id);
-      return;
-    }
-
-    if (action === "edit-file") {
-      store.beginEditFile(el.dataset.file || store.ui.activeFile);
-      return;
-    }
-
-    if (action === "cancel-edit") {
-      store.cancelEditFile();
-      return;
-    }
-
-    if (action === "save-file") {
-      const area = document.getElementById("fileEditor");
-      const name = store.ui.editingFile;
-      if (!area || !name) return;
-      const targetId = skill.id;
-      store.saveSkillFile(targetId, name, area.value).then((res) => {
-        if (!res.ok) {
-          SH.toast(res.reason || "保存失败", "error");
-          return;
-        }
-        store.cancelEditFile();
-        if (res.persisted) {
-          SH.toast(`已保存 ${res.fileName}${res.created ? "（新建）" : ""}`, "ok");
-        } else {
-          SH.toast(`已更新 ${res.fileName}，但未写入磁盘：${res.reason || ""}`, "warn");
-        }
-      });
+    if (action === "open-editor") {
+      // 编辑统一在独立编辑页完成，侧边栏只负责查看
+      SH.editor &&
+        SH.editor.open(skill.id, el.dataset.file || store.ui.activeFile || undefined);
       return;
     }
 
@@ -528,12 +486,6 @@
 
   function init() {
     panel.addEventListener("click", onClick);
-    // 编辑文件时实时标记未保存状态（只改提示文字，不重渲染以免失焦）
-    panel.addEventListener("input", (event) => {
-      if (event.target && event.target.id === "fileEditor") {
-        store.setEditDirty(true);
-      }
-    });
     // 窄屏下点选技能自动展开面板
     store.subscribe((reason) => {
       if (reason === "select" && window.innerWidth <= 1180) {

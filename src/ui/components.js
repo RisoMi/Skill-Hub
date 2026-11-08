@@ -103,8 +103,12 @@
             <span class="card__name" title="${esc(display)}">${esc(display)}</span>
             <span class="card__src" title="${esc(sub)}">${esc(sub)}</span>
           </div>
-          <button class="card__check" data-action="check" data-id="${esc(skill.id)}"
-                  aria-label="选择 ${esc(skill.name)}" title="选择">${checkIcon()}</button>
+          <div class="card__actions">
+            <button class="card__edit" data-action="edit-skill" data-id="${esc(skill.id)}"
+                    aria-label="编辑 ${esc(skill.name)}" title="编辑技能">${I.svg("pencil", 12)}</button>
+            <button class="card__check" data-action="check" data-id="${esc(skill.id)}"
+                    aria-label="选择 ${esc(skill.name)}" title="选择">${checkIcon()}</button>
+          </div>
         </div>
         <p class="card__desc">${esc(skill.description)}</p>
         <div class="card__bottom">
@@ -145,6 +149,8 @@
         <span class="skill-row__src">${esc(src)}</span>
         <span class="skill-row__installs" title="已安装 ${counts.installed}/${counts.total} 个 Agent">${counts.installed}/${counts.total}</span>
         <span class="skill-row__meta">${esc(skill.version)} · ${esc(fmtRelative(skill.updatedAt))}</span>
+        <button class="card__edit" data-action="edit-skill" data-id="${esc(skill.id)}"
+                aria-label="编辑 ${esc(skill.name)}" title="编辑技能">${I.svg("pencil", 12)}</button>
         <button class="card__check" data-action="check" data-id="${esc(skill.id)}"
                 aria-label="选择 ${esc(skill.name)}">${checkIcon()}</button>
       </div>`;

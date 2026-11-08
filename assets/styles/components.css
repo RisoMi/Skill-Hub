@@ -528,6 +528,44 @@ html[data-theme="dark"] .btn--primary {
   white-space: nowrap;
 }
 
+/* 卡片右上角操作组：编辑 + 勾选 */
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.card__edit {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-4);
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease), background 0.12s var(--ease),
+    color 0.12s var(--ease);
+}
+
+/* 鼠标悬停或键盘聚焦时露出，避免常驻抢夺勾选框的视觉重量 */
+.card:hover .card__edit,
+.card:focus-within .card__edit,
+.card.is-active .card__edit,
+.skill-row:hover .card__edit,
+.skill-row:focus-within .card__edit,
+.skill-row.is-active .card__edit {
+  opacity: 1;
+}
+
+.card__edit:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
 .card__check {
   flex: 0 0 18px;
   width: 18px;
@@ -1120,70 +1158,12 @@ html[data-theme="dark"] .btn--primary {
   text-align: center;
 }
 
-/* 编辑态 */
-.file-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.file-editor__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
+/* 文件名（详情面板的只读预览仍在用） */
 .file-editor__name {
   font-family: var(--font-mono);
   font-size: var(--fs-mini);
   color: var(--text-2);
   word-break: break-all;
-}
-
-.file-editor__state {
-  font-size: 10px;
-  color: var(--text-4);
-}
-
-.file-editor__state.is-dirty {
-  color: var(--warn, #c98a2e);
-}
-
-.file-editor__area {
-  width: 100%;
-  min-height: 180px;
-  /* 不能太高：详情面板底部有常驻的浮动按钮（复制路径 / 导出），
-     编辑器一旦把操作条顶出去，保存按钮就会被盖住 */
-  max-height: 34vh;
-  padding: 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-btn);
-  background: var(--surface-2);
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.65;
-  resize: vertical;
-  outline: none;
-}
-
-.file-editor__area:focus {
-  border-color: var(--accent-bright);
-  box-shadow: 0 0 0 3px var(--accent-bg);
-}
-
-.file-editor__bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.file-editor__tip {
-  flex: 1;
-  font-size: 10px;
-  color: var(--text-4);
 }
 
 .file-preview__head {

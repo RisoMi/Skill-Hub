@@ -114,6 +114,15 @@
 
   /* ---------------- 事件 ---------------- */
   function onScrollClick(event) {
+    const editBtn = event.target.closest('[data-action="edit-skill"]');
+    if (editBtn) {
+      // 必须拦在这里：卡片本身是 data-action="open"，
+      // 不拦的话点到编辑按钮会连带触发选中/打开详情
+      event.stopPropagation();
+      SH.editor && SH.editor.open(editBtn.dataset.id);
+      return;
+    }
+
     const check = event.target.closest('[data-action="check"]');
     if (check) {
       event.stopPropagation();
