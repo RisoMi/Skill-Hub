@@ -178,6 +178,7 @@
 
     $("importBtn").addEventListener("click", () => SH.dialogs.openImport());
     $("addSourceBtn").addEventListener("click", () => SH.dialogs.openAddSource());
+    $("newSkillBtn").addEventListener("click", () => SH.dialogs.openNewSkill());
     $("settingsBtn").addEventListener("click", () => SH.dialogs.openSettings());
     $("rescanBtn").addEventListener("click", rescan);
 
@@ -393,6 +394,15 @@
           store.selectSkill(target.id);
           store.setTab("files");
           SH.editor && SH.editor.open(target.id, "SKILL.md");
+        },
+        // 预览标记效果（两个标记 + 侧栏切到标记栏）
+        marked: () => {
+          const m1 = SH.store.addMark({ name: "常用", color: "#c0392b" });
+          const m2 = SH.store.addMark({ name: "待整理", color: "#2563eb" });
+          const list = store.filteredSkills();
+          if (list[0] && m1.ok) store.setSkillMark(list[0].id, m1.id);
+          if (list[1] && m2.ok) store.setSkillMark(list[1].id, m2.id);
+          store.setNavTab("mark");
         },
         settingswin: () => {
           SH.runtime = {

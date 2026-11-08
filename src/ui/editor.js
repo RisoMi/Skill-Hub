@@ -59,12 +59,20 @@
     return files
       .map(
         (f) => `
-        <button class="se-file ${f.name === state.file ? "is-active" : ""}"
-                data-act="file" data-file="${esc(f.name)}">
-          ${SH.icons.svg(isMd(f.name) ? "doc" : "file", 12)}
-          <span class="se-file__name truncate">${esc(f.name)}</span>
-          ${isDirty(f.name) ? `<span class="se-file__dot" title="未保存"></span>` : ""}
-        </button>`
+        <div class="se-file-row">
+          <button class="se-file ${f.name === state.file ? "is-active" : ""}"
+                  data-act="file" data-file="${esc(f.name)}">
+            ${SH.icons.svg(isMd(f.name) ? "doc" : "file", 12)}
+            <span class="se-file__name truncate">${esc(f.name)}</span>
+            ${isDirty(f.name) ? `<span class="se-file__dot" title="未保存"></span>` : ""}
+          </button>
+          ${
+            /^SKILL\.md$/i.test(f.name)
+              ? ""
+              : `<button class="se-file__del" data-act="delete" data-file="${esc(f.name)}"
+                        title="删除 ${esc(f.name)}">${SH.icons.svg("trash", 12)}</button>`
+          }
+        </div>`
       )
       .join("");
   }
@@ -241,6 +249,33 @@
     SH.toast(`已创建 ${name}`, "ok");
   }
 
+  async function deleteFile(name) {
+    const skill = currentSkill();
+    if (!skill) return;
+
+    const res = await store.deleteSkillFile(skill.id, name);
+    if (!res.ok) {
+      state.error = res.reason || "删除失败";
+      render();
+      return;
+    }
+
+    delete state.dirty[name];
+    if (state.file === name) {
+      const rest = filesOf(skill);
+      state.file = rest.length ? rest[0].name : null;
+      state.mode = "edit";
+    }
+    state.error = "";
+    render();
+    SH.toast(
+      res.persisted
+        ? `已删除 ${name}`
+        : `已从列表移除，但文件未真正删除：${res.reason || "请用桌面版"}`,
+      res.persisted ? "ok" : "warn"
+    );
+  }
+
   function requestClose() {
     if (hasAnyDirty()) {
       const ok = window.confirm("还有文件没保存，确定关闭吗？");
@@ -258,6 +293,15 @@
 
     if (act === "close") return requestClose();
     if (act === "file") return switchFile(el.dataset.file);
+    if (act === "delete") {
+      const name = el.dataset.file;
+      if (!name) return;
+      const ok = window.confirm(
+        `删除 ${name}？\n\n会从技能目录里移除这个文件，无法撤销。`
+      );
+      if (ok) deleteFile(name);
+      return;
+    }
     if (act === "mode") {
       state.mode = state.mode === "edit" ? "preview" : "edit";
       return render();

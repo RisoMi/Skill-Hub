@@ -114,6 +114,21 @@
 
   /* ---------------- 事件 ---------------- */
   function onScrollClick(event) {
+    const markBtn = event.target.closest('[data-action="mark-skill"]');
+    if (markBtn) {
+      event.stopPropagation();
+      SH.dialogs && SH.dialogs.openMarkPicker(markBtn.dataset.id);
+      return;
+    }
+
+    const hideBtn = event.target.closest('[data-action="hide-skill"]');
+    if (hideBtn) {
+      event.stopPropagation();
+      const res = store.setSkillHidden(hideBtn.dataset.id, true);
+      if (res.ok) SH.toast("已隐藏，可在侧栏「隐藏」里恢复", "ok");
+      return;
+    }
+
     const editBtn = event.target.closest('[data-action="edit-skill"]');
     if (editBtn) {
       // 必须拦在这里：卡片本身是 data-action="open"，

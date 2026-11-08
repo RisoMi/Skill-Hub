@@ -93,8 +93,12 @@
     const status = SH.store.installStatus(skill);
     const counts = installCounts(status);
     const drifted = status.filter((s) => s.installed && !s.sameContent).length;
+    const mark = skill.markId ? SH.store.getMark(skill.markId) : null;
+    const markHue = mark ? SH.store.markColor(mark) : "";
     return `
-      <article class="card ${checked ? "is-selected" : ""} ${active ? "is-active" : ""}"
+      <article class="card ${checked ? "is-selected" : ""} ${active ? "is-active" : ""} ${
+      mark ? "has-mark" : ""
+    }" ${mark ? `style="--mark-color:${markHue}"` : ""}
                data-id="${esc(skill.id)}" data-action="open" tabindex="0" role="button"
                aria-pressed="${checked ? "true" : "false"}" aria-label="${esc(skill.name)}">
         <div class="card__top">
@@ -104,7 +108,15 @@
             <span class="card__src" title="${esc(sub)}">${esc(sub)}</span>
           </div>
           <div class="card__actions">
-            <button class="card__edit" data-action="edit-skill" data-id="${esc(skill.id)}"
+            <button class="card__act ${mark ? "is-marked" : ""}" data-action="mark-skill"
+                    data-id="${esc(skill.id)}"
+                    title="${mark ? `标记：${esc(mark.name)}（点击更换）` : "添加标记"}"
+                    aria-label="标记 ${esc(skill.name)}"
+                    ${mark ? `style="color:${markHue}"` : ""}>${I.svg("flag", 12)}</button>
+            <button class="card__act" data-action="hide-skill" data-id="${esc(skill.id)}"
+                    title="隐藏（可在侧栏「隐藏」中恢复）"
+                    aria-label="隐藏 ${esc(skill.name)}">${I.svg("eyeOff", 12)}</button>
+            <button class="card__act" data-action="edit-skill" data-id="${esc(skill.id)}"
                     aria-label="编辑 ${esc(skill.name)}" title="编辑技能">${I.svg("pencil", 12)}</button>
             <button class="card__check" data-action="check" data-id="${esc(skill.id)}"
                     aria-label="选择 ${esc(skill.name)}" title="选择">${checkIcon()}</button>
@@ -112,6 +124,13 @@
         </div>
         <p class="card__desc">${esc(skill.description)}</p>
         <div class="card__bottom">
+          ${
+            mark
+              ? `<span class="tag tag--mark" style="--mark-color:${markHue}">${esc(
+                  mark.name
+                )}</span>`
+              : ""
+          }
           <span class="tag">${esc(cat)}</span>
           ${skill.favorite ? starIcon(true) : ""}
           <span class="card__meta">${esc(skill.version)} · ${esc(fmtRelative(skill.updatedAt))}</span>

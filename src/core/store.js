@@ -15,6 +15,7 @@
     sources: clone(SH.seed.sources),
     categories: clone(SH.seed.categories),
     skills: clone(SH.seed.skills),
+    marks: [],
     syncAt: SH.seed.builtAt,
   };
 
@@ -22,6 +23,10 @@
     query: "",
     sourceId: "all",
     categoryId: "all",
+    /** 侧栏当前 tab：source / category / mark / hidden */
+    navTab: "source",
+    /** 标记筛选，all 表示不筛 */
+    markId: "all",
     filter: "all",
     sort: "updated",
     view: "grid",
@@ -36,6 +41,7 @@
   const state = {
     sources: [],
     categories: [],
+    marks: [],
     skills: [],
     syncAt: 0,
     prefs: {
@@ -67,6 +73,7 @@
     state.sources = base.sources || clone(defaults.sources);
     state.categories = base.categories || clone(defaults.categories);
     state.skills = base.skills || clone(defaults.skills);
+    state.marks = Array.isArray(base.marks) ? base.marks : [];
     state.syncAt = base.syncAt || Date.now();
     state.prefs = Object.assign({ theme: "light", platform: "auto" }, prefs || {});
   }
@@ -108,6 +115,7 @@
       const payload = {
         sources: state.sources,
         categories: state.categories,
+        marks: state.marks,
         skills: slimSkills(state.skills),
         syncAt: state.syncAt,
       };
@@ -255,13 +263,19 @@
             .filter((s) => s.sourceId === ui.sourceId)
             .map((s) => Object.assign({}, s, { installIds: installIdsOf(s.name) }));
 
+    const inHiddenTab = ui.navTab === "hidden";
+
     return sortItems(
-      pool.filter(
-        (s) =>
+      pool.filter((s) => {
+        // 隐藏的 SKILL 只在「隐藏」栏里出现，避免 Agent 内置技能干扰正常浏览
+        if (inHiddenTab ? !s.hidden : s.hidden) return false;
+        return (
           matchesQuery(s, ui.query) &&
           matchesFilter(s) &&
-          (ui.categoryId === "all" || s.categoryId === ui.categoryId)
-      )
+          (ui.categoryId === "all" || s.categoryId === ui.categoryId) &&
+          (ui.markId === "all" || s.markId === ui.markId)
+        );
+      })
     );
   }
 
@@ -866,6 +880,135 @@
   }
 
   /* ---------------- 分类 ---------------- */
+  /* ---------------- 标记（自定义名称与配色） ---------------- */
+
+  const MARK_COLORS = [
+    "#c0392b",
+    "#d97706",
+    "#0f9d58",
+    "#2563eb",
+    "#7c3aed",
+    "#db2777",
+    "#0891b2",
+    "#65a30d",
+  ];
+
+  function getMark(id) {
+    return state.marks.find((m) => m.id === id) || null;
+  }
+
+  function markColor(mark) {
+    return (mark && mark.color) || "var(--line-strong)";
+  }
+
+  /** 侧栏计数只算会出现在列表里的技能，保证数字与列表一致 */
+  function markCounts() {
+    const map = {};
+    aggregateSkills().forEach((s) => {
+      if (s.hidden || !s.markId) return;
+      map[s.markId] = (map[s.markId] || 0) + 1;
+    });
+    return map;
+  }
+
+  function addMark({ name, color } = {}) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) return { ok: false, reason: "标记名称不能为空" };
+    if (state.marks.some((m) => m.name === trimmed)) {
+      return { ok: false, reason: "已存在同名标记" };
+    }
+    const id = uid("mark");
+    state.marks.push({
+      id,
+      name: trimmed,
+      color: color || MARK_COLORS[state.marks.length % MARK_COLORS.length],
+    });
+    persist();
+    emit("marks");
+    return { ok: true, id };
+  }
+
+  function updateMark(id, patch = {}) {
+    const mark = getMark(id);
+    if (!mark) return { ok: false, reason: "标记不存在" };
+    const name = String(patch.name !== undefined ? patch.name : mark.name).trim();
+    if (!name) return { ok: false, reason: "标记名称不能为空" };
+    if (state.marks.some((m) => m.id !== id && m.name === name)) {
+      return { ok: false, reason: "已存在同名标记" };
+    }
+    mark.name = name;
+    if (patch.color) mark.color = patch.color;
+    persist();
+    emit("marks");
+    return { ok: true };
+  }
+
+  function removeMark(id) {
+    const mark = getMark(id);
+    if (!mark) return { ok: false, reason: "标记不存在" };
+    let cleared = 0;
+    state.skills.forEach((s) => {
+      if (s.markId === id) {
+        s.markId = null;
+        cleared += 1;
+      }
+    });
+    state.marks = state.marks.filter((m) => m.id !== id);
+    if (ui.markId === id) ui.markId = "all";
+    persist();
+    emit("marks");
+    return { ok: true, cleared };
+  }
+
+  /** 给技能打标记；markId 传 null 为清除。同名多副本保持同步 */
+  function setSkillMark(skillId, markId) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+    if (markId && !getMark(markId)) return { ok: false, reason: "标记不存在" };
+
+    const next = markId || null;
+    const key = skill.name.toLowerCase();
+    state.skills.forEach((s) => {
+      if (s.name.toLowerCase() === key) s.markId = next;
+    });
+
+    persist();
+    emit("marks");
+    return { ok: true, markId: next };
+  }
+
+  /** 隐藏 / 恢复；隐藏后默认不出现在列表里 */
+  function setSkillHidden(skillId, hidden) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+
+    const flag = !!hidden;
+    const key = skill.name.toLowerCase();
+    state.skills.forEach((s) => {
+      if (s.name.toLowerCase() === key) s.hidden = flag;
+    });
+
+    if (flag && ui.selectedId === skillId) ui.selectedId = null;
+    persist();
+    emit("hidden");
+    return { ok: true, hidden: flag };
+  }
+
+  function hiddenSkills() {
+    return aggregateSkills().filter((s) => s.hidden);
+  }
+
+  function setNavTab(tab) {
+    const allowed = ["source", "category", "mark", "hidden"];
+    ui.navTab = allowed.indexOf(tab) >= 0 ? tab : "source";
+    emit("nav");
+  }
+
+  function setMark(id) {
+    ui.markId = id || "all";
+    emit("mark");
+  }
+
   function addCategory({ name, color } = {}) {
     const trimmed = String(name || "").trim();
     if (!trimmed) return { ok: false, reason: "分类名称不能为空" };
@@ -1125,6 +1268,42 @@
   }
 
   /**
+   * 删除技能目录下的单个文件（配套新建/修改）。
+   * 主文件 SKILL.md 不允许删——它承载技能正文，删了整个技能就废了。
+   */
+  async function deleteSkillFile(skillId, fileName) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+
+    const name = String(fileName || "").trim();
+    if (!name) return { ok: false, reason: "文件名不能为空" };
+    if (/^SKILL\.md$/i.test(name)) {
+      return { ok: false, reason: "SKILL.md 是主文件，不能删除" };
+    }
+
+    const files = Array.isArray(skill.files) ? skill.files : [];
+    if (!files.some((f) => f.name === name)) {
+      return { ok: false, reason: "文件不存在" };
+    }
+
+    skill.files = files.filter((f) => f.name !== name);
+    skill.updatedAt = Date.now();
+    persist();
+    emit("file-deleted");
+
+    const native = SH.native;
+    if (!native || !native.isNative || !skill.nativeDir) {
+      return { ok: true, persisted: false, reason: "浏览器预览无法写入磁盘，请用桌面版" };
+    }
+    try {
+      await native.deleteSkillFile(skill.nativeDir, name);
+      return { ok: true, persisted: true };
+    } catch (err) {
+      return { ok: true, persisted: false, reason: String((err && err.message) || err) };
+    }
+  }
+
+  /**
    * 保存/清除元数据标记，并持久化到磁盘上的 _*_meta.json。
    * 清除时会把对应文件一并删掉，否则重启扫描又会被读回来。
    */
@@ -1250,10 +1429,23 @@
     removeCategory,
     categoryColor,
     sourceColor,
+    getMark,
+    markColor,
+    markCounts,
+    addMark,
+    updateMark,
+    removeMark,
+    setSkillMark,
+    setSkillHidden,
+    hiddenSkills,
+    setNavTab,
+    setMark,
+    MARK_COLORS,
     importSkills,
     rescan,
     setSkillMeta,
     saveSkillFile,
+    deleteSkillFile,
     writeSkillFiles,
     removeSkill,
     resetData,

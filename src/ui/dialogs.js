@@ -854,6 +854,360 @@
     ).join("")}</div>`;
   }
 
+  /**
+   * 新建 / 编辑标记：名称 + 颜色。
+   * 标记是纯本地概念，只影响卡片展示与侧栏归类，不写进技能目录。
+   */
+  function openMarkEditor(markId) {
+    const editing = markId ? store.getMark(markId) : null;
+    const state = {
+      name: editing ? editing.name : "",
+      color: editing ? editing.color : store.MARK_COLORS[0],
+      error: "",
+      confirmDelete: false,
+    };
+
+    function render() {
+      return `
+        <div class="dialog dialog--xs" role="dialog" aria-modal="true"
+             aria-label="${editing ? "编辑标记" : "新建标记"}">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">${editing ? "编辑标记" : "新建标记"}</h2>
+              <p class="dialog__subtitle">标记显示在卡片上，用颜色区分用途</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <div class="field">
+              <span class="field__label">名称</span>
+              <input class="input" id="markName" maxlength="12"
+                     placeholder="例如：常用、待整理、客户项目"
+                     value="${esc(state.name)}" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="field">
+              <span class="field__label">颜色</span>
+              <div class="swatches">
+                ${store.MARK_COLORS.map(
+                  (c) => `<button class="swatch ${c === state.color ? "is-active" : ""}"
+                              data-act="color" data-color="${c}"
+                              style="background:${c}" aria-label="选择颜色 ${c}"></button>`
+                ).join("")}
+              </div>
+            </div>
+            ${
+              state.error
+                ? `<p class="field__help" style="color:var(--danger,#c0392b)">${esc(
+                    state.error
+                  )}</p>`
+                : ""
+            }
+          </div>
+          <div class="dialog__foot">
+            <div class="dialog__foot-hint">
+              ${
+                editing
+                  ? state.confirmDelete
+                    ? `<button class="btn btn--danger btn--sm" data-act="delete">确认删除标记</button>`
+                    : `<button class="link-danger" data-act="ask-delete">删除标记</button>`
+                  : ""
+              }
+            </div>
+            <div class="dialog__btns">
+              <button class="btn btn--outline" data-act="close">取消</button>
+              <button class="btn btn--primary" data-act="save">保存</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function save() {
+      const name = state.name.trim();
+      if (!name) {
+        state.error = "标记名称不能为空";
+        return refresh();
+      }
+      const res = editing
+        ? store.updateMark(editing.id, { name, color: state.color })
+        : store.addMark({ name, color: state.color });
+      if (!res.ok) {
+        state.error = res.reason;
+        return refresh();
+      }
+      close();
+      SH.toast(editing ? "标记已更新" : `已创建标记「${name}」`, "ok");
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+      if (act === "close") return close();
+      if (act === "color") {
+        state.color = el.dataset.color;
+        return refresh();
+      }
+      if (act === "save") return save();
+      if (act === "ask-delete") {
+        state.confirmDelete = true;
+        return refresh();
+      }
+      if (act === "delete") {
+        const res = store.removeMark(editing.id);
+        close();
+        SH.toast(
+          res.ok ? `标记已删除，${res.cleared} 个 SKILL 已解除标记` : res.reason,
+          res.ok ? "ok" : "error"
+        );
+      }
+    }
+
+    mount(render, handler);
+
+    const input = document.querySelector("#markName");
+    if (input) {
+      input.focus();
+      input.addEventListener("input", () => {
+        state.name = input.value;
+      });
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          save();
+        }
+      });
+    }
+  }
+
+  /** 卡片上的标记选择器：选一个已有标记，或直接新建 */
+  function openMarkPicker(skillId) {
+    const skill = store.getSkill(skillId);
+    if (!skill) return;
+    const current = skill.markId || null;
+
+    function render() {
+      const marks = store.state.marks;
+      return `
+        <div class="dialog dialog--xs" role="dialog" aria-modal="true" aria-label="设置标记">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">标记</h2>
+              <p class="dialog__subtitle">${esc(store.displayName(skill))}</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <div class="mark-picker">
+              <button class="mark-item ${!current ? "is-active" : ""}" data-act="pick" data-id="">
+                <span class="mark-item__dot" style="background:var(--line-strong)"></span>
+                <span class="mark-item__name">无标记</span>
+                ${!current ? `<span class="mark-item__check">${I.svg("check", 12)}</span>` : ""}
+              </button>
+              ${marks
+                .map(
+                  (m) => `
+                <button class="mark-item ${current === m.id ? "is-active" : ""}"
+                        data-act="pick" data-id="${esc(m.id)}">
+                  <span class="mark-item__dot" style="background:${esc(m.color)}"></span>
+                  <span class="mark-item__name">${esc(m.name)}</span>
+                  ${current === m.id ? `<span class="mark-item__check">${I.svg("check", 12)}</span>` : ""}
+                </button>`
+                )
+                .join("")}
+            </div>
+            <button class="btn btn--outline btn--sm" data-act="new"
+                    style="align-self:flex-start;margin-top:8px">＋ 新建标记</button>
+          </div>
+        </div>`;
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+
+      if (act === "close") return close();
+
+      if (act === "pick") {
+        const id = el.dataset.id || null;
+        const res = store.setSkillMark(skillId, id);
+        close();
+        if (!res.ok) {
+          SH.toast(res.reason, "error");
+          return;
+        }
+        const mark = id ? store.getMark(id) : null;
+        SH.toast(mark ? `已标记为「${mark.name}」` : "已清除标记", "ok");
+        return;
+      }
+
+      if (act === "new") {
+        close();
+        openMarkEditor();
+        return;
+      }
+    }
+
+    mount(render, handler);
+  }
+
+  /**
+   * 新建 SKILL：选一个可写目录，填名字与描述，
+   * 生成 SKILL.md 后写盘，再重扫让列表立刻出现。
+   */
+  function openNewSkill() {
+    if (!SH.native.isNative) {
+      SH.toast("浏览器预览无法写入磁盘，请在桌面版新建", "warn");
+      return;
+    }
+    const writable = store.state.sources.filter((s) => s.nativePath && !s.readonly);
+    if (!writable.length) {
+      SH.toast("先添加一个可写的 SKILL 目录", "warn");
+      return;
+    }
+
+    const state = {
+      sourceId: writable[0].id,
+      name: "",
+      description: "",
+      error: "",
+      busy: false,
+    };
+
+    function render() {
+      return `
+        <div class="dialog" role="dialog" aria-modal="true" aria-label="新建 SKILL">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">新建 SKILL</h2>
+              <p class="dialog__subtitle">会在所选目录下创建同名文件夹与 SKILL.md</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <div class="field">
+              <span class="field__label">创建到</span>
+              <select class="input" id="newSkillSource">
+                ${writable
+                  .map(
+                    (s) =>
+                      `<option value="${esc(s.id)}" ${
+                        s.id === state.sourceId ? "selected" : ""
+                      }>${esc(s.name)} · ${esc(s.nativePath)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </div>
+            <div class="field">
+              <span class="field__label">名称</span>
+              <input class="input input--mono" id="newSkillName" maxlength="60"
+                     placeholder="my-new-skill"
+                     value="${esc(state.name)}" autocomplete="off" spellcheck="false">
+              <span class="field__help">小写字母、数字和短横线，会作为目录名</span>
+            </div>
+            <div class="field">
+              <span class="field__label">描述</span>
+              <input class="input" id="newSkillDesc" maxlength="200"
+                     placeholder="一句话说明这个 SKILL 做什么"
+                     value="${esc(state.description)}" autocomplete="off">
+            </div>
+            ${
+              state.error
+                ? `<p class="field__help" style="color:var(--danger,#c0392b)">${esc(
+                    state.error
+                  )}</p>`
+                : ""
+            }
+          </div>
+          <div class="dialog__foot">
+            <div class="dialog__foot-hint">创建后可直接在编辑器里补充内容</div>
+            <div class="dialog__btns">
+              <button class="btn btn--outline" data-act="close">取消</button>
+              <button class="btn btn--primary" data-act="create" ${
+                state.busy ? "disabled" : ""
+              }>${state.busy ? "创建中…" : "创建"}</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function create() {
+      if (state.busy) return;
+      const name = state.name.trim();
+      if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+        state.error = "名称只能用小写字母、数字和短横线，且以字母或数字开头";
+        return refresh();
+      }
+      if (store.state.skills.some((s) => s.name.toLowerCase() === name)) {
+        state.error = "已存在同名 SKILL，换个名字";
+        return refresh();
+      }
+      const src = store.getSource(state.sourceId);
+      if (!src || !src.nativePath) {
+        state.error = "所选目录不可用";
+        return refresh();
+      }
+
+      state.busy = true;
+      state.error = "";
+      refresh();
+
+      const desc = state.description.trim() || "新建的 SKILL";
+      const content = `---\nname: ${name}\ndescription: ${desc}\n---\n\n# ${name}\n\n${desc}\n`;
+
+      try {
+        await SH.native.writeSkill(src.nativePath, name, [
+          { name: "SKILL.md", content },
+        ]);
+      } catch (err) {
+        state.busy = false;
+        state.error = `写入失败：${String((err && err.message) || err)}`;
+        return refresh();
+      }
+
+      close();
+      SH.toast(`已创建 ${name}`, "ok");
+
+      // 重扫，让新技能立刻出现在列表里
+      try {
+        const roots = await SH.native.defaultRoots();
+        const scanned = await SH.native.scanRoots(roots);
+        if (scanned) store.applyNativeScan(scanned);
+      } catch (err) {
+        SH.toast("已写入，但列表刷新失败，可点右上角重新扫描", "warn");
+      }
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+      if (act === "close") return close();
+      if (act === "create") return void create();
+    }
+
+    mount(render, handler);
+
+    const sel = document.querySelector("#newSkillSource");
+    if (sel) sel.addEventListener("change", () => { state.sourceId = sel.value; });
+
+    const nameInput = document.querySelector("#newSkillName");
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.addEventListener("input", () => { state.name = nameInput.value; });
+      nameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); create(); }
+      });
+    }
+    const descInput = document.querySelector("#newSkillDesc");
+    if (descInput) {
+      descInput.addEventListener("input", () => { state.description = descInput.value; });
+    }
+  }
+
   function openCategoryEditor(categoryId) {
     const editing = categoryId ? store.getCategory(categoryId) : null;
     const state = {
@@ -2081,6 +2435,9 @@
     openExport,
     openImport,
     openAddSource,
+    openNewSkill,
+    openMarkEditor,
+    openMarkPicker,
     openCategoryEditor,
     openSourceEditor,
     openMetaEditor,

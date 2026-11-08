@@ -172,6 +172,41 @@ body.is-editing-skill {
   padding: 0 8px 12px;
 }
 
+/* 文件行：切换按钮 + 删除按钮并排 */
+.se-file-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.se-file-row .se-file {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.se-file__del {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-4);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease), color 0.12s var(--ease),
+    background 0.12s var(--ease);
+}
+
+.se-file-row:hover .se-file__del {
+  opacity: 1;
+}
+
+.se-file__del:hover {
+  background: var(--surface);
+  color: var(--danger, #c0392b);
+}
+
 .se-file {
   display: flex;
   align-items: center;

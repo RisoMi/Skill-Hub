@@ -1270,3 +1270,54 @@
   white-space: pre-wrap;
   word-break: break-all;
 }
+
+/* ---------------- 标记选择器 ---------------- */
+.mark-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.mark-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-btn);
+  text-align: left;
+  color: var(--text-2);
+  font-size: var(--fs-mini);
+  transition: background 0.1s var(--ease);
+}
+
+.mark-item:hover {
+  background: var(--surface-2);
+}
+
+.mark-item.is-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.mark-item__dot {
+  flex: 0 0 10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.mark-item__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark-item__check {
+  flex: 0 0 auto;
+  color: var(--accent);
+}

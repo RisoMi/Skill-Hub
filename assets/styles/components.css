@@ -536,10 +536,10 @@ html[data-theme="dark"] .btn--primary {
   flex: 0 0 auto;
 }
 
-.card__edit {
-  flex: 0 0 22px;
-  width: 22px;
-  height: 22px;
+.card__act {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -552,18 +552,36 @@ html[data-theme="dark"] .btn--primary {
 }
 
 /* 鼠标悬停或键盘聚焦时露出，避免常驻抢夺勾选框的视觉重量 */
-.card:hover .card__edit,
-.card:focus-within .card__edit,
-.card.is-active .card__edit,
-.skill-row:hover .card__edit,
-.skill-row:focus-within .card__edit,
-.skill-row.is-active .card__edit {
+.card:hover .card__act,
+.card:focus-within .card__act,
+.card.is-active .card__act,
+.skill-row:hover .card__act,
+.skill-row:focus-within .card__act,
+.skill-row.is-active .card__act {
   opacity: 1;
 }
 
-.card__edit:hover {
+.card__act:hover {
   background: var(--accent-bg);
   color: var(--accent);
+}
+
+/* 已打标记时旗标用标记色，始终可见，方便一眼扫出色块 */
+.card__act.is-marked {
+  opacity: 1;
+  color: var(--mark-color, var(--accent));
+}
+
+/* 卡片左侧色条：标记的颜色直接体现在卡片边缘 */
+.card.has-mark {
+  border-left: 3px solid var(--mark-color, var(--accent));
+  padding-left: calc(var(--card-pad, 14px) - 3px);
+}
+
+.tag--mark {
+  color: var(--mark-color, var(--accent));
+  border-color: color-mix(in srgb, var(--mark-color, var(--accent)) 40%, transparent);
+  background: color-mix(in srgb, var(--mark-color, var(--accent)) 12%, transparent);
 }
 
 .card__check {
@@ -1791,4 +1809,142 @@ html[data-theme="dark"] .btn--primary {
 .sync-result__list li span:first-child {
   flex: 0 0 76px;
   font-weight: 500;
+}
+
+/* ---------------- 侧栏 tab ---------------- */
+.nav-tabs {
+  display: flex;
+  gap: 2px;
+  margin: 10px 0 8px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.nav-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-3);
+  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+.nav-tab:hover {
+  color: var(--text);
+}
+
+.nav-tab.is-active {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.nav-tab__badge {
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--line-strong);
+  color: var(--text-2);
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.nav-tab.is-active .nav-tab__badge {
+  background: var(--accent);
+  color: #fff;
+}
+
+.nav-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.nav-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 20px;
+}
+
+.nav-panel__hint {
+  font-size: 10px;
+  color: var(--text-4);
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* 「新建 SKILL」主操作 */
+.nav-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  border-radius: var(--radius-btn);
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  transition: background 0.12s var(--ease);
+}
+
+.nav-cta:hover {
+  background: var(--accent-bright);
+}
+
+.nav-sub-action {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.nav-empty {
+  padding: 14px 10px;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--text-4);
+  text-align: center;
+}
+
+.nav-empty__link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.nav-row--hidden {
+  opacity: 0.85;
+}
+
+.nav-row__restore {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  font-size: 10px;
+  color: var(--text-3);
+  background: var(--surface);
+}
+
+.nav-row__restore:hover {
+  border-color: var(--accent-bright);
+  color: var(--accent);
 }
