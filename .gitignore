@@ -8,3 +8,6 @@ src-tauri/gen/schemas/
 .DS_Store
 Thumbs.db
 
+
+# 构建产物（本地下载，不入库）
+release-artifacts/
