@@ -1,0 +1,21 @@
+# 统一用 LF：这些脚本会被 macOS 直接执行，
+# 一旦带上 CRLF 就会报 bad interpreter: /bin/bash^M
+* text=auto eol=lf
+
+*.sh      text eol=lf
+*.command text eol=lf
+*.rs      text eol=lf
+*.toml    text eol=lf
+*.json    text eol=lf
+*.mjs     text eol=lf
+*.js      text eol=lf
+*.py      text eol=lf
+*.md      text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.yml     text eol=lf
+
+# 二进制资源
+*.png  binary
+*.ico  binary
+*.icns binary

@@ -1,0 +1,65 @@
+name: desktop-build
+
+# 产出双端免安装包：
+#   Windows → Skill-Hub-Portable-*-windows.zip（exe + data）
+#   macOS   → Skill-Hub-Portable-*-macos.zip（.app + data）+ .dmg
+#
+# 本地只能在对应平台上构建：Windows 无法交叉编译 macOS（需 macOS SDK 与
+# hdiutil，Apple 不开放），所以 macOS 产物一律走这里。
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            name: windows
+          - platform: macos-latest
+            name: macos
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # universal 包需要同时装两个 macOS target
+          targets: ${{ matrix.name == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      - name: Build (Windows · 便携包)
+        if: matrix.name == 'windows'
+        run: npm run build
+
+      - name: Build (macOS · universal .app + .dmg)
+        if: matrix.name == 'macos'
+        run: npx tauri build --target universal-apple-darwin --bundles app,dmg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-hub-${{ matrix.name }}
+          path: |
+            src-tauri/target/**/release/portable/*.zip
+            src-tauri/target/**/release/bundle/**/*.dmg
+            packaging/macos/*.sh
+          if-no-files-found: error

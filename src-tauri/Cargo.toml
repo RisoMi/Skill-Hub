@@ -1,0 +1,28 @@
+[package]
+name = "skill-hub"
+version = "0.9.0"
+description = "跨平台 SKILL 统一管理器"
+authors = ["Skill Hub"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "skill_hub_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+walkdir = "2"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
