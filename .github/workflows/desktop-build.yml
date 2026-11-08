@@ -1,8 +1,8 @@
 name: desktop-build
 
-# 产出双端免安装包：
-#   Windows → Skill-Hub-Portable-*-windows.zip（exe + data）
-#   macOS   → Skill-Hub-Portable-*-macos.zip（.app + data）+ .dmg
+# 产出两端的分发物（策略不同，见 README「打包与卸载」）：
+#   Windows → Skill-Hub-Portable-*-windows.zip（便携，exe + data）
+#   macOS   → Skill Hub-*.dmg（universal：Intel + Apple Silicon）
 #
 # 本地只能在对应平台上构建：Windows 无法交叉编译 macOS（需 macOS SDK 与
 # hdiutil，Apple 不开放），所以 macOS 产物一律走这里。
@@ -33,10 +33,15 @@ jobs:
           node-version: 20
           cache: npm
 
+      # 两个平台分开装：给 Windows 传空的 targets 会让 rustup 直接报错
       - uses: dtolnay/rust-toolchain@stable
+        if: matrix.name == 'windows'
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: matrix.name == 'macos'
         with:
           # universal 包需要同时装两个 macOS target
-          targets: ${{ matrix.name == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
