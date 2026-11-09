@@ -177,7 +177,7 @@
     });
 
     $("importBtn").addEventListener("click", () => SH.dialogs.openImport());
-    // 「添加 SKILL 目录」「新建 SKILL」已移入侧栏来源 tab，由 sidebar 事件委托处理
+    $("newSkillBtn").addEventListener("click", () => SH.dialogs.openNewSkill());
     $("settingsBtn").addEventListener("click", () => SH.dialogs.openSettings());
     $("rescanBtn").addEventListener("click", rescan);
 
