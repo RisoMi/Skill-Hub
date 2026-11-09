@@ -1091,6 +1091,91 @@
   }
 
   /**
+   * 删除整个 SKILL：列出将被移动的目录，二次确认后移入回收站。
+   */
+  function openDeleteSkill(skillId) {
+    const skill = store.getSkill(skillId);
+    if (!skill) return;
+
+    const key = skill.name.toLowerCase();
+    const records = store.state.skills.filter((s) => s.name.toLowerCase() === key);
+    const dirs = records.map((r) => r.nativeDir).filter(Boolean);
+    const state = { busy: false };
+
+    function render() {
+      return `
+        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="删除 SKILL">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">删除 SKILL</h2>
+              <p class="dialog__subtitle">${esc(store.displayName(skill))} · ${records.length} 个安装点</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <p class="field__help" style="margin-bottom:6px">以下目录会被移动到回收站：</p>
+            <ul class="danger-list">
+              ${
+                dirs.length
+                  ? dirs
+                      .map((d) => `<li class="danger-list__item">${esc(d)}</li>`)
+                      .join("")
+                  : `<li class="danger-list__item">没有本地目录，仅从列表中移除</li>`
+              }
+            </ul>
+            <p class="field__help" style="margin-top:8px">
+              回收站位置：<code>data/trash/&lt;时间戳&gt;/&lt;技能名&gt;</code>，
+              可通过「设置 → 打开数据目录」找回。
+            </p>
+          </div>
+          <div class="dialog__foot">
+            <div class="dialog__foot-hint">删除不可在应用内撤销</div>
+            <div class="dialog__btns">
+              <button class="btn btn--outline" data-act="close">取消</button>
+              <button class="btn btn--danger" data-act="confirm" ${
+                state.busy ? "disabled" : ""
+              }>${state.busy ? "删除中…" : "确认删除"}</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    async function doDelete() {
+      if (state.busy) return;
+      state.busy = true;
+      refresh();
+
+      const res = await store.deleteSkill(skillId);
+      close();
+
+      if (!res.ok) {
+        SH.toast(res.reason || "删除失败", "error");
+        return;
+      }
+      SH.toast(
+        res.persisted
+          ? `已删除 ${skill.name}，可在回收站找回`
+          : `已从列表移除 ${skill.name}（浏览器预览不改动磁盘）`,
+        res.persisted ? "ok" : "warn"
+      );
+      if (res.failed && res.failed.length) {
+        SH.toast(`${res.failed.length} 个目录移动失败，可能正被占用`, "warn");
+      }
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+      if (act === "close") return close();
+      if (act === "confirm") return void doDelete();
+    }
+
+    mount(render, handler);
+  }
+
+  /**
    * 新建 SKILL：选一个可写目录，填名字与描述，
    * 生成 SKILL.md 后写盘，再重扫让列表立刻出现。
    */
@@ -1208,11 +1293,22 @@
       close();
       SH.toast(`已创建 ${name}`, "ok");
 
-      // 重扫，让新技能立刻出现在列表里
+      // 重扫后按名字找回新技能，直接进编辑器继续写内容
       try {
         const roots = await SH.native.defaultRoots();
         const scanned = await SH.native.scanRoots(roots);
-        if (scanned) store.applyNativeScan(scanned);
+        if (scanned) {
+          const result = store.applyNativeScan(scanned);
+          const created =
+            result.applied &&
+            store.state.skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
+          if (created && SH.editor) {
+            store.selectSkill(created.id);
+            SH.editor.open(created.id, "SKILL.md");
+            return;
+          }
+        }
+        SH.toast("已创建，但没能自动打开编辑器，可从列表进入", "warn");
       } catch (err) {
         SH.toast("已写入，但列表刷新失败，可点右上角重新扫描", "warn");
       }
@@ -2473,6 +2569,7 @@
     openImport,
     openAddSource,
     openNewSkill,
+    openDeleteSkill,
     openMarkEditor,
     openMarkPicker,
     openCategoryEditor,

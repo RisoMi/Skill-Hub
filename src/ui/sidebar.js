@@ -44,7 +44,11 @@
         <button class="nav-tab ${ui.navTab === t.id ? "is-active" : ""}"
                 data-action="nav-tab" data-tab="${t.id}" role="tab"
                 aria-selected="${ui.navTab === t.id}">${esc(t.label)}${
-          t.id === "hidden" ? `<span class="nav-tab__badge">${store.hiddenSkills().length}</span>` : ""
+          t.id === "hidden"
+            ? `<span class="nav-tab__badge">${
+                store.state.skills.filter((s) => s.hidden).length
+              }</span>`
+            : ""
         }</button>`
       ).join("")}
     </div>`;
@@ -145,33 +149,59 @@
   }
 
   function hiddenPanel() {
-    const hidden = store.hiddenSkills();
+    // 用原始记录而不是聚合结果：同一个 SKILL 可能装在多个 Agent 下，
+    // 按安装点分组才能看出「这个技能在哪个 Agent 里被隐藏了」
+    const hiddenRaw = store.state.skills.filter((s) => s.hidden);
 
-    if (!hidden.length) {
+    if (!hiddenRaw.length) {
       return `<div class="nav-empty">
         没有被隐藏的 SKILL。<br>
         用卡片上的隐藏按钮可以把 Agent 自带、平时不用的技能收起来。
       </div>`;
     }
 
-    const rows = hidden
-      .map(
-        (s) => `
-        <div class="nav-row nav-row--hidden" data-kind="hidden" data-id="${esc(s.id)}">
-          <span class="dot" style="background:var(--text-4)"></span>
-          <span class="nav-row__name" title="${esc(s.name)}">${esc(
-          store.displayName(s)
-        )}</span>
-          <button class="nav-row__restore" data-action="unhide" data-id="${esc(
-            s.id
-          )}" title="恢复到列表">恢复</button>
-        </div>`
-      )
+    const groups = new Map();
+    hiddenRaw.forEach((s) => {
+      const key = s.sourceId || "unknown";
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    });
+
+    const sections = Array.from(groups.entries())
+      .map(([sourceId, items]) => {
+        const src = store.getSource(sourceId);
+        const color = src ? store.sourceColor(src) : "var(--text-4)";
+        const label = src ? src.name : "其他来源";
+        return `
+          <div class="nav-subgroup">
+            <div class="nav-subgroup__head">
+              <span class="dot" style="background:${color}"></span>
+              <span class="nav-subgroup__name" title="${esc(label)}">${esc(label)}</span>
+              <span class="nav-subgroup__count">${items.length}</span>
+            </div>
+            ${items
+              .map(
+                (s) => `
+              <div class="nav-row nav-row--hidden" data-kind="hidden" data-id="${esc(s.id)}">
+                <span class="dot" style="background:var(--text-4)"></span>
+                <span class="nav-row__name" title="${esc(s.name)}">${esc(
+                  store.displayName(s)
+                )}</span>
+                <button class="nav-row__restore" data-action="unhide" data-id="${esc(
+                  s.id
+                )}" title="恢复到列表">恢复</button>
+              </div>`
+              )
+              .join("")}
+          </div>`;
+      })
       .join("");
 
     return `
-      <div class="nav-panel__head"><span class="nav-panel__hint">${hidden.length} 个已隐藏</span></div>
-      <div class="nav-list">${rows}</div>`;
+      <div class="nav-panel__head">
+        <span class="nav-panel__hint">${hiddenRaw.length} 个已隐藏 · 按 Agent 分组</span>
+      </div>
+      <div class="nav-list">${sections}</div>`;
   }
 
   /* ---------------- 渲染 ---------------- */

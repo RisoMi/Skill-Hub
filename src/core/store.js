@@ -1312,6 +1312,49 @@
   }
 
   /**
+   * 删除整个 SKILL：把它在每个 Agent 目录下的副本都移入回收站。
+   * 回收站由后端实现（data/trash/<时间戳>/<技能名>），可手动捞回。
+   * 记录会从索引里移除，避免列表残留幽灵项。
+   */
+  async function deleteSkill(skillId) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+
+    const key = skill.name.toLowerCase();
+    const records = state.skills.filter((s) => s.name.toLowerCase() === key);
+    const dirs = records.map((r) => r.nativeDir).filter(Boolean);
+
+    const failed = [];
+    if (SH.native && SH.native.isNative) {
+      for (const dir of dirs) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await SH.native.removeSkill(dir);
+        } catch (err) {
+          failed.push({ dir, reason: String((err && err.message) || err) });
+        }
+      }
+    }
+
+    // 即便某个目录移动失败也从索引移除：留着只会变成点不开的幽灵项
+    state.skills = state.skills.filter((s) => s.name.toLowerCase() !== key);
+
+    if (ui.selectedId === skillId) ui.selectedId = null;
+    records.forEach((r) => ui.checked.delete(r.id));
+
+    persist();
+    emit("delete");
+
+    return {
+      ok: true,
+      numberOf: records.length,
+      dirs,
+      failed,
+      persisted: !!(SH.native && SH.native.isNative),
+    };
+  }
+
+  /**
    * 保存/清除元数据标记，并持久化到磁盘上的 _*_meta.json。
    * 清除时会把对应文件一并删掉，否则重启扫描又会被读回来。
    */
@@ -1454,6 +1497,7 @@
     setSkillMeta,
     saveSkillFile,
     deleteSkillFile,
+    deleteSkill,
     writeSkillFiles,
     removeSkill,
     resetData,

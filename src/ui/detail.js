@@ -361,6 +361,8 @@
       <div class="insp-footer">
         <button class="btn btn--outline" data-action="copy-path">${I.svg("copy", 13)}<span>复制路径</span></button>
         <div class="insp-footer__spacer"></div>
+        <button class="btn btn--outline btn--danger-text" data-action="delete-skill"
+                title="删除并移入回收站">${I.svg("trash", 13)}<span>删除</span></button>
         <button class="btn btn--primary" data-action="export-one" ${
           skill.exportable ? "" : "disabled title=\"该来源为只读，无法导出\""
         }>${I.svg("exportUp", 13)}<span>导出此 SKILL</span></button>
@@ -477,6 +479,10 @@
       const fileName = m.fileName || "_skillhub_meta.json";
       SH.util.downloadBlob(new Blob([content], { type: "application/json" }), fileName);
       SH.toast(`已下载 ${fileName}`, "ok");
+      return;
+    }
+    if (action === "delete-skill") {
+      SH.dialogs && SH.dialogs.openDeleteSkill(skill.id);
       return;
     }
     if (action === "export-one") {

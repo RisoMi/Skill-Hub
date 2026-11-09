@@ -394,6 +394,20 @@
           store.setTab("files");
           SH.editor && SH.editor.open(target.id, "SKILL.md");
         },
+        // 预览删除确认弹窗
+        delconfirm: () => {
+          const first = store.filteredSkills()[0];
+          if (first) {
+            store.selectSkill(first.id);
+            SH.dialogs.openDeleteSkill(first.id);
+          }
+        },
+        // 预览隐藏栏（按 Agent 分组）
+        hidden: () => {
+          const list = store.filteredSkills();
+          list.slice(0, 3).forEach((s) => store.setSkillHidden(s.id, true));
+          store.setNavTab("hidden");
+        },
         // 预览标记编辑弹窗（色板与自定义取色）
         markedit: () => SH.dialogs.openMarkEditor(),
         // 预览标记效果（两个标记 + 侧栏切到标记栏）

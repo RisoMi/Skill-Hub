@@ -1961,3 +1961,36 @@ html[data-theme="dark"] .btn--primary {
   border-color: var(--accent-bright);
   color: var(--accent);
 }
+
+/* 隐藏栏：按 Agent 分组 */
+.nav-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 10px;
+}
+
+.nav-subgroup__head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  color: var(--text-4);
+}
+
+.nav-subgroup__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.nav-subgroup__count {
+  flex: 0 0 auto;
+  min-width: 16px;
+  text-align: right;
+  color: var(--text-4);
+}

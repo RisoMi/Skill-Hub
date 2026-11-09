@@ -1361,3 +1361,38 @@
   opacity: 0;
   cursor: pointer;
 }
+
+/* 删除确认：待删除目录清单 */
+.danger-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.danger-list__item {
+  padding: 6px 9px;
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+/* 危险动作：描边红字，避免和主按钮抢视觉 */
+.btn--danger-text {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.btn--danger-text:hover {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: var(--danger);
+  color: var(--danger);
+}
