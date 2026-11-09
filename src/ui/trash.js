@@ -98,7 +98,7 @@
                        "check",
                        11
                      )}</span>
-                     ${allChecked ? "取消全选" : "全选"}
+                     <span class="trash-bar__label">${allChecked ? "取消全选" : "全选"}</span>
                    </button>
                    <span class="trash-bar__count">已选 ${checked.size} 项</span>
                    <div class="trash-bar__spacer"></div>
@@ -134,10 +134,48 @@
       </div>`;
   }
 
+  /**
+   * 只同步勾选态，不重建 DOM。
+   * 勾选时整窗重绘会让弹窗的入场动画重放（看起来就是闪一下），
+   * 也会丢掉滚动位置。
+   */
+  function syncSelection() {
+    if (!root) return;
+
+    root.querySelectorAll(".trash-item").forEach((row) => {
+      const on = checked.has(row.dataset.id);
+      row.classList.toggle("is-checked", on);
+      const box = row.querySelector(".trash-item__check");
+      if (box) {
+        box.classList.toggle("is-on", on);
+        box.setAttribute("aria-pressed", String(on));
+      }
+    });
+
+    const countEl = root.querySelector(".trash-bar__count");
+    if (countEl) countEl.textContent = `已选 ${checked.size} 项`;
+
+    const allBtn = root.querySelector('[data-act="toggle-all"]');
+    if (allBtn) {
+      const all = items.length > 0 && checked.size === items.length;
+      allBtn.setAttribute("aria-pressed", String(all));
+      const box = allBtn.querySelector(".trash-item__check");
+      if (box) box.classList.toggle("is-on", all);
+      const label = allBtn.querySelector(".trash-bar__label");
+      if (label) label.textContent = all ? "取消全选" : "全选";
+    }
+
+    const restoreBtn = root.querySelector('[data-act="restore-checked"]');
+    const purgeBtn = root.querySelector('[data-act="purge-checked"]');
+    [restoreBtn, purgeBtn].forEach((btn) => {
+      if (btn) btn.disabled = checked.size === 0;
+    });
+  }
+
   async function load() {
-    loading = true;
+    // 本地读取很快，直接拿到结果再渲染一次即可。
+    // 先渲染骨架再渲染列表会连闪两下。
     error = "";
-    render();
     try {
       items = (await SH.native.listTrash()) || [];
     } catch (err) {
@@ -221,12 +259,12 @@
     if (act === "toggle") {
       if (checked.has(id)) checked.delete(id);
       else checked.add(id);
-      return render();
+      return syncSelection();
     }
 
     if (act === "toggle-all") {
       checked = checked.size === items.length ? new Set() : new Set(items.map((i) => i.id));
-      return render();
+      return syncSelection();
     }
 
     if (act === "restore") return void restore([id]);

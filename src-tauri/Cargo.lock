@@ -2765,7 +2765,7 @@ checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
 
 [[package]]
 name = "skill-hub"
-version = "0.9.8"
+version = "0.9.9"
 dependencies = [
  "serde",
  "serde_json",
