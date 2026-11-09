@@ -179,6 +179,7 @@
     $("importBtn").addEventListener("click", () => SH.dialogs.openImport());
     $("newSkillBtn").addEventListener("click", () => SH.dialogs.openNewSkill());
     $("settingsBtn").addEventListener("click", () => SH.dialogs.openSettings());
+    $("trashBtn").addEventListener("click", () => SH.trash.open());
     $("rescanBtn").addEventListener("click", rescan);
 
     const exportChecked = () => {
@@ -192,6 +193,11 @@
 
     $("exportSelectedBtn").addEventListener("click", exportChecked);
     $("selectionExportBtn").addEventListener("click", exportChecked);
+    $("selectionDeleteBtn").addEventListener("click", () => {
+      const ids = Array.from(store.ui.checked);
+      if (!ids.length) return;
+      SH.dialogs.openDeleteSkill(ids);
+    });
     $("clearSelectionBtn").addEventListener("click", () => store.clearChecks());
 
     // 桌面端接管系统窗口；浏览器预览只做提示，不伪造系统行为
@@ -248,9 +254,23 @@
   }
 
   /* ---------------- 桌面端启动扫描 ---------------- */
+  /**
+   * 合并扫描目录：默认候选目录 + 用户已配置的来源目录。
+   * 只扫默认目录会漏掉自定义目录，而且重扫会用结果覆盖索引，
+   * 那些目录下的技能就被冲掉了。
+   */
+  async function collectScanRoots() {
+    const defaults = (await SH.native.defaultRoots()) || [];
+    const set = new Set(defaults.map((p) => String(p)));
+    store.state.sources.forEach((s) => {
+      if (s.nativePath && s.native) set.add(String(s.nativePath));
+    });
+    return Array.from(set);
+  }
+
   async function bootNativeScan() {
     try {
-      const roots = await SH.native.defaultRoots();
+      const roots = await collectScanRoots();
       if (!roots || !roots.length) return;
 
       const scanned = await SH.native.scanRoots(roots);
@@ -394,6 +414,10 @@
           store.setTab("files");
           SH.editor && SH.editor.open(target.id, "SKILL.md");
         },
+        // 预览批量操作条
+        select: () => {
+          store.filteredSkills().slice(0, 2).forEach((s) => store.toggleCheck(s.id));
+        },
         // 预览删除确认弹窗
         delconfirm: () => {
           const first = store.filteredSkills()[0];
@@ -519,6 +543,8 @@
 
   SH.toast = toast;
   SH.applyPrefs = applyPrefs;
+  /** 供其他模块触发一次全量重扫（回收站还原后需要） */
+  SH.app = { rescan: bootNativeScan };
   SH.rescan = rescan;
 
   if (document.readyState === "loading") {

@@ -75,6 +75,13 @@
           <span class="dot dot--live"></span>
           <span id="syncText">已同步 6 个目录 · 刚刚</span>
         </div>
+        <button class="settings-row" id="trashBtn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2.6 3.8h8.8M5 3.8V2.6h4v1.2M3.6 3.8l.6 7.4h5.6l.6-7.4M5.8 6v3.4M8.2 6v3.4"
+                  stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>回收站</span>
+        </button>
         <button class="settings-row" id="settingsBtn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <circle cx="7" cy="7" r="2.2" stroke="currentColor" stroke-width="1.2"/>
@@ -170,6 +177,8 @@
         <div class="selection-bar__spacer"></div>
         <button class="selection-bar__clear" id="clearSelectionBtn">清空选择</button>
         <button class="btn btn--accent btn--sm" id="selectionExportBtn">导出打包</button>
+        <button class="btn btn--danger-text btn--sm" id="selectionDeleteBtn" disabled
+                title="先勾选要删除的 SKILL">批量删除</button>
       </div>
     </main>
 
@@ -203,6 +212,7 @@
 <script src="src/ui/list.js"></script>
 <script src="src/ui/detail.js"></script>
 <script src="src/ui/editor.js"></script>
+<script src="src/ui/trash.js"></script>
 <script src="src/ui/dialogs.js"></script>
 <script src="src/app.js"></script>
 </body>

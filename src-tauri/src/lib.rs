@@ -395,7 +395,21 @@ fn remove_skill(app: tauri::AppHandle, dir: String) -> Result<String, String> {
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
         .unwrap_or_else(|| "skill".into());
-    let dest = trash.join(name);
+    let dest = trash.join(&name);
+
+    // 删除前记录原路径与体积，否则回收站无法还原
+    let size = dir_size(&path);
+    let meta = serde_json::json!({
+        "name": name,
+        "originalPath": dir,
+        "deletedAt": now_millis(),
+        "sizeBytes": size,
+    });
+    fs::write(
+        trash.join("_origin.json"),
+        serde_json::to_string_pretty(&meta).unwrap_or_default(),
+    )
+    .map_err(|e| e.to_string())?;
 
     if fs::rename(&path, &dest).is_err() {
         copy_dir(&path, &dest)?;
@@ -403,6 +417,138 @@ fn remove_skill(app: tauri::AppHandle, dir: String) -> Result<String, String> {
     }
 
     Ok(dest.to_string_lossy().to_string())
+}
+
+fn dir_size(path: &Path) -> u64 {
+    let mut total = 0u64;
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                total += dir_size(&p);
+            } else if let Ok(m) = entry.metadata() {
+                total += m.len();
+            }
+        }
+    }
+    total
+}
+
+/// 回收站条目
+#[derive(serde::Serialize)]
+struct TrashItem {
+    id: String,
+    name: String,
+    original_path: String,
+    deleted_at: u64,
+    size_bytes: u64,
+}
+
+#[tauri::command]
+fn list_trash(app: tauri::AppHandle) -> Result<Vec<TrashItem>, String> {
+    let root = data_dir(&app)?.join("trash");
+    if !root.is_dir() {
+        return Ok(Vec::new());
+    }
+
+    let mut items = Vec::new();
+    for entry in fs::read_dir(&root).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let p = entry.path();
+        if !p.is_dir() {
+            continue;
+        }
+        let id = entry.file_name().to_string_lossy().to_string();
+
+        let (name, original, at, size) = {
+            let raw = fs::read_to_string(p.join("_origin.json")).unwrap_or_default();
+            let v: serde_json::Value = serde_json::from_str(&raw).unwrap_or(serde_json::json!({}));
+            (
+                v["name"]
+                    .as_str()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| id.clone()),
+                v["originalPath"].as_str().unwrap_or("").to_string(),
+                v["deletedAt"].as_u64().unwrap_or(0),
+                v["sizeBytes"].as_u64().unwrap_or(0),
+            )
+        };
+
+        items.push(TrashItem {
+            id,
+            name,
+            original_path: original,
+            deleted_at: at,
+            size_bytes: size,
+        });
+    }
+
+    items.sort_by(|a, b| b.deleted_at.cmp(&a.deleted_at));
+    Ok(items)
+}
+
+fn safe_trash_id(id: &str) -> bool {
+    !id.is_empty() && !id.contains("..") && !id.contains('/') && !id.contains('\\')
+}
+
+#[tauri::command]
+fn restore_trash(app: tauri::AppHandle, id: String) -> Result<String, String> {
+    if !safe_trash_id(&id) {
+        return Err("非法的回收站条目 id".into());
+    }
+    let src_dir = data_dir(&app)?.join("trash").join(&id);
+    if !src_dir.is_dir() {
+        return Err("回收站条目不存在".into());
+    }
+
+    let meta: serde_json::Value = fs::read_to_string(src_dir.join("_origin.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or(serde_json::json!({}));
+    let original = meta["originalPath"].as_str().unwrap_or("").to_string();
+    if original.is_empty() {
+        return Err("这条记录没有原始路径，无法还原".into());
+    }
+
+    let target = PathBuf::from(&original);
+    if target.exists() {
+        return Err(format!("原位置已存在同名目录：{original}"));
+    }
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    // 回收站目录下除了 _origin.json，就是技能目录本身
+    let mut inner: Option<PathBuf> = None;
+    for entry in fs::read_dir(&src_dir).map_err(|e| e.to_string())? {
+        let e = entry.map_err(|e| e.to_string())?;
+        if e.path().is_dir() {
+            inner = Some(e.path());
+            break;
+        }
+    }
+    let from = inner.ok_or_else(|| "回收站条目里没有技能目录".to_string())?;
+
+    if fs::rename(&from, &target).is_err() {
+        copy_dir(&from, &target)?;
+        fs::remove_dir_all(&from).map_err(|e| e.to_string())?;
+    }
+
+    let _ = fs::remove_dir_all(&src_dir);
+    Ok(target.to_string_lossy().to_string())
+}
+
+/// 彻底删除（不进回收站）
+#[tauri::command]
+fn purge_trash(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    if !safe_trash_id(&id) {
+        return Err("非法的回收站条目 id".into());
+    }
+    let p = data_dir(&app)?.join("trash").join(&id);
+    if p.is_dir() {
+        fs::remove_dir_all(&p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 /// 删除技能目录下的单个文件（清除元数据标记时用）
@@ -608,6 +754,9 @@ pub fn run() {
             write_skill,
             remove_skill,
             delete_skill_file,
+            list_trash,
+            restore_trash,
+            purge_trash,
             window_action,
             runtime_info,
             export_uninstaller

@@ -92,6 +92,27 @@
       return invoke("delete_skill_file", { dir, name });
     },
 
+    /** 回收站：列表 / 还原 / 彻底删除 */
+    async listTrash() {
+      if (!isNative) return [];
+      try {
+        return await invoke("list_trash");
+      } catch (err) {
+        console.warn("[native] list_trash 失败", err);
+        return [];
+      }
+    },
+
+    async restoreTrash(id) {
+      if (!isNative) throw new Error("浏览器预览无法操作回收站");
+      return invoke("restore_trash", { id });
+    },
+
+    async purgeTrash(id) {
+      if (!isNative) throw new Error("浏览器预览无法操作回收站");
+      return invoke("purge_trash", { id });
+    },
+
     /** macOS：把卸载脚本导出到桌面并在 Finder 中定位 */
     async exportUninstaller() {
       if (!isNative) throw new Error("浏览器预览不可用");

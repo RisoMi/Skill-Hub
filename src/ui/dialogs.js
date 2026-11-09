@@ -1091,51 +1091,79 @@
   }
 
   /**
-   * 删除整个 SKILL：列出将被移动的目录，二次确认后移入回收站。
+   * 删除 SKILL（单个或批量）：列出将被移入回收站的目录，二次确认后执行。
+   * @param {string|string[]} input 技能 id 或 id 数组
    */
-  function openDeleteSkill(skillId) {
-    const skill = store.getSkill(skillId);
-    if (!skill) return;
+  function openDeleteSkill(input) {
+    const ids = Array.isArray(input) ? input : [input];
+    const picked = ids.map((id) => store.getSkill(id)).filter(Boolean);
+    if (!picked.length) return;
 
-    const key = skill.name.toLowerCase();
-    const records = store.state.skills.filter((s) => s.name.toLowerCase() === key);
-    const dirs = records.map((r) => r.nativeDir).filter(Boolean);
+    // 同名多副本算一个技能
+    const targets = new Map();
+    picked.forEach((s) => targets.set(s.name.toLowerCase(), s));
+
+    const dirs = [];
+    targets.forEach((skill) => {
+      store.state.skills
+        .filter((r) => r.name.toLowerCase() === skill.name.toLowerCase())
+        .forEach((r) => {
+          if (r.nativeDir) dirs.push(r.nativeDir);
+        });
+    });
+
+    const multi = targets.size > 1;
+    const title = multi ? `删除 ${targets.size} 个 SKILL` : "删除 SKILL";
+    const subtitle = multi
+      ? `共 ${targets.size} 个技能 · ${dirs.length} 个目录`
+      : `${store.displayName(picked[0])} · ${dirs.length || 1} 个安装点`;
+
     const state = { busy: false };
 
     function render() {
       return `
-        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="删除 SKILL">
+        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="${title}">
           <div class="dialog__head">
             <div class="dialog__title-group">
-              <h2 class="dialog__title">删除 SKILL</h2>
-              <p class="dialog__subtitle">${esc(store.displayName(skill))} · ${records.length} 个安装点</p>
+              <h2 class="dialog__title">${title}</h2>
+              <p class="dialog__subtitle">${esc(subtitle)}</p>
             </div>
             <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
           </div>
           <div class="hline" style="height:1px;background:var(--line)"></div>
           <div class="dialog__body">
+            ${
+              multi
+                ? `<p class="field__help" style="margin-bottom:6px">即将删除：</p>
+                   <ul class="danger-list" style="max-height:120px;margin-bottom:8px">
+                     ${Array.from(targets.values())
+                       .map(
+                         (s) => `<li class="danger-list__item">${esc(store.displayName(s))}</li>`
+                       )
+                       .join("")}
+                   </ul>`
+                : ""
+            }
             <p class="field__help" style="margin-bottom:6px">以下目录会被移动到回收站：</p>
             <ul class="danger-list">
               ${
                 dirs.length
-                  ? dirs
-                      .map((d) => `<li class="danger-list__item">${esc(d)}</li>`)
-                      .join("")
+                  ? dirs.map((d) => `<li class="danger-list__item">${esc(d)}</li>`).join("")
                   : `<li class="danger-list__item">没有本地目录，仅从列表中移除</li>`
               }
             </ul>
             <p class="field__help" style="margin-top:8px">
               回收站位置：<code>data/trash/&lt;时间戳&gt;/&lt;技能名&gt;</code>，
-              可通过「设置 → 打开数据目录」找回。
+              可在「回收站」里还原。
             </p>
           </div>
           <div class="dialog__foot">
-            <div class="dialog__foot-hint">删除不可在应用内撤销</div>
+            <div class="dialog__foot-hint">删除后可在回收站还原</div>
             <div class="dialog__btns">
               <button class="btn btn--outline" data-act="close">取消</button>
               <button class="btn btn--danger" data-act="confirm" ${
                 state.busy ? "disabled" : ""
-              }>${state.busy ? "删除中…" : "确认删除"}</button>
+              }>${state.busy ? "删除中…" : `确认删除${multi ? ` ${targets.size} 个` : ""}`}</button>
             </div>
           </div>
         </div>`;
@@ -1144,19 +1172,25 @@
     async function doDelete() {
       if (state.busy) return;
       state.busy = true;
-      refresh();
+      const btn = root.querySelector('[data-act="confirm"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "删除中…";
+      }
 
-      const res = await store.deleteSkill(skillId);
+      const res = await store.deleteSkills(Array.from(targets.values()).map((s) => s.id));
       close();
 
       if (!res.ok) {
         SH.toast(res.reason || "删除失败", "error");
         return;
       }
+
+      const label = multi ? `${res.names.length} 个 SKILL` : res.names[0];
       SH.toast(
         res.persisted
-          ? `已删除 ${skill.name}，可在回收站找回`
-          : `已从列表移除 ${skill.name}（浏览器预览不改动磁盘）`,
+          ? `已删除 ${label}（${res.dirs} 个目录已移入回收站）`
+          : `已从列表移除 ${label}（浏览器预览不改动磁盘）`,
         res.persisted ? "ok" : "warn"
       );
       if (res.failed && res.failed.length) {
@@ -1167,17 +1201,20 @@
     function handler(event) {
       const el = event.target.closest("[data-act]");
       if (!el) return;
-      const act = el.dataset.act;
-      if (act === "close") return close();
-      if (act === "confirm") return void doDelete();
+      if (el.dataset.act === "close") {
+        if (state.busy) return;
+        return close();
+      }
+      if (el.dataset.act === "confirm") return void doDelete();
     }
 
     mount(render, handler);
   }
 
   /**
-   * 新建 SKILL：选一个可写目录，填名字与描述，
-   * 生成 SKILL.md 后写盘，再重扫让列表立刻出现。
+   * 新建 SKILL：选可写目录 → 填名称与描述 → 生成 SKILL.md 并写盘。
+   * 全程只做局部状态更新，不重绘整个弹窗：
+   * 重绘会让输入框失焦、动画重放（看起来就是闪一下）。
    */
   function openNewSkill() {
     if (!SH.native.isNative) {
@@ -1194,7 +1231,6 @@
       sourceId: writable[0].id,
       name: "",
       description: "",
-      error: "",
       busy: false,
     };
 
@@ -1226,8 +1262,8 @@
             <div class="field">
               <span class="field__label">名称</span>
               <input class="input input--mono" id="newSkillName" maxlength="60"
-                     placeholder="my-new-skill"
-                     value="${esc(state.name)}" autocomplete="off" spellcheck="false">
+                     placeholder="my-new-skill" value="${esc(state.name)}"
+                     autocomplete="off" spellcheck="false">
               <span class="field__help">小写字母、数字和短横线，会作为目录名</span>
             </div>
             <div class="field">
@@ -1236,108 +1272,150 @@
                      placeholder="一句话说明这个 SKILL 做什么"
                      value="${esc(state.description)}" autocomplete="off">
             </div>
-            ${
-              state.error
-                ? `<p class="field__help" style="color:var(--danger,#c0392b)">${esc(
-                    state.error
-                  )}</p>`
-                : ""
-            }
+            <p class="field__help" id="newSkillError"
+               style="color:var(--danger,#c0392b)" hidden></p>
           </div>
           <div class="dialog__foot">
-            <div class="dialog__foot-hint">创建后可直接在编辑器里补充内容</div>
+            <div class="dialog__foot-hint">创建后会直接打开编辑器</div>
             <div class="dialog__btns">
               <button class="btn btn--outline" data-act="close">取消</button>
-              <button class="btn btn--primary" data-act="create" ${
-                state.busy ? "disabled" : ""
-              }>${state.busy ? "创建中…" : "创建"}</button>
+              <button class="btn btn--primary" data-act="create">创建</button>
             </div>
           </div>
         </div>`;
     }
 
+    /** 只改按钮，不重绘 */
+    function setBusy(on) {
+      state.busy = on;
+      const btn = root.querySelector('[data-act="create"]');
+      if (btn) {
+        btn.disabled = on;
+        btn.textContent = on ? "创建中…" : "创建";
+      }
+      const cancel = root.querySelector('.dialog__btns [data-act="close"]');
+      if (cancel) cancel.disabled = on;
+    }
+
+    function showError(msg) {
+      const box = root.querySelector("#newSkillError");
+      if (!box) return;
+      box.textContent = msg || "";
+      box.hidden = !msg;
+    }
+
     async function create() {
       if (state.busy) return;
-      const name = state.name.trim();
+
+      // 以输入框当前值为准，避免监听意外丢失时读到旧值
+      const nameEl = root.querySelector("#newSkillName");
+      const descEl = root.querySelector("#newSkillDesc");
+      const name = (nameEl ? nameEl.value : state.name).trim();
+      const desc = (descEl ? descEl.value : state.description).trim();
+      state.name = name;
+      state.description = desc;
+
+      if (!name) return showError("请填写名称");
       if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
-        state.error = "名称只能用小写字母、数字和短横线，且以字母或数字开头";
-        return refresh();
+        return showError("名称只能用小写字母、数字和短横线，且以字母或数字开头");
       }
-      if (store.state.skills.some((s) => s.name.toLowerCase() === name)) {
-        state.error = "已存在同名 SKILL，换个名字";
-        return refresh();
+      if (store.state.skills.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
+        return showError("已存在同名 SKILL，换个名字");
       }
+
       const src = store.getSource(state.sourceId);
-      if (!src || !src.nativePath) {
-        state.error = "所选目录不可用";
-        return refresh();
-      }
+      if (!src || !src.nativePath) return showError("所选目录不可用");
 
-      state.busy = true;
-      state.error = "";
-      refresh();
+      showError("");
+      setBusy(true);
 
-      const desc = state.description.trim() || "新建的 SKILL";
-      const content = `---\nname: ${name}\ndescription: ${desc}\n---\n\n# ${name}\n\n${desc}\n`;
+      const description = desc || "新建的 SKILL";
+      const content = `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n\n${description}\n`;
 
       try {
         await SH.native.writeSkill(src.nativePath, name, [
           { name: "SKILL.md", content },
         ]);
       } catch (err) {
-        state.busy = false;
-        state.error = `写入失败：${String((err && err.message) || err)}`;
-        return refresh();
+        setBusy(false);
+        showError(`写入失败：${String((err && err.message) || err)}`);
+        return;
+      }
+
+      const sep = String(src.nativePath).indexOf("\\") >= 0 ? "\\" : "/";
+      const nativeDir = `${String(src.nativePath).replace(/[\\/]+$/, "")}${sep}${name}`;
+
+      const res = store.addLocalSkill({
+        name,
+        description,
+        sourceId: src.id,
+        nativeDir,
+        content,
+      });
+
+      if (!res.ok) {
+        setBusy(false);
+        showError(res.reason || "写入成功，但列表记录失败");
+        return;
       }
 
       close();
       SH.toast(`已创建 ${name}`, "ok");
 
-      // 重扫后按名字找回新技能，直接进编辑器继续写内容
-      try {
-        const roots = await SH.native.defaultRoots();
-        const scanned = await SH.native.scanRoots(roots);
-        if (scanned) {
-          const result = store.applyNativeScan(scanned);
-          const created =
-            result.applied &&
-            store.state.skills.find((s) => s.name.toLowerCase() === name.toLowerCase());
-          if (created && SH.editor) {
-            store.selectSkill(created.id);
-            SH.editor.open(created.id, "SKILL.md");
-            return;
-          }
-        }
-        SH.toast("已创建，但没能自动打开编辑器，可从列表进入", "warn");
-      } catch (err) {
-        SH.toast("已写入，但列表刷新失败，可点右上角重新扫描", "warn");
+      // 直接用刚建好的那条记录打开编辑器：
+      // 不重扫是因为重扫只覆盖默认目录，会冲掉自定义目录里的技能，
+      // 而且索引重建后 id 全变，反而找不到刚建的那条。
+      if (SH.editor) {
+        store.selectSkill(res.skill.id);
+        SH.editor.open(res.skill.id, "SKILL.md");
       }
     }
 
     function handler(event) {
       const el = event.target.closest("[data-act]");
       if (!el) return;
-      const act = el.dataset.act;
-      if (act === "close") return close();
-      if (act === "create") return void create();
+      if (el.dataset.act === "close") {
+        if (state.busy) return; // 写盘过程中不允许关闭
+        return close();
+      }
+      if (el.dataset.act === "create") return void create();
     }
 
     mount(render, handler);
 
-    const sel = document.querySelector("#newSkillSource");
-    if (sel) sel.addEventListener("change", () => { state.sourceId = sel.value; });
-
-    const nameInput = document.querySelector("#newSkillName");
-    if (nameInput) {
-      nameInput.focus();
-      nameInput.addEventListener("input", () => { state.name = nameInput.value; });
-      nameInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") { e.preventDefault(); create(); }
+    const sel = root.querySelector("#newSkillSource");
+    if (sel) {
+      sel.addEventListener("change", () => {
+        state.sourceId = sel.value;
       });
     }
-    const descInput = document.querySelector("#newSkillDesc");
+
+    const nameInput = root.querySelector("#newSkillName");
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.addEventListener("input", () => {
+        state.name = nameInput.value;
+        showError("");
+      });
+      nameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          create();
+        }
+      });
+    }
+
+    const descInput = root.querySelector("#newSkillDesc");
     if (descInput) {
-      descInput.addEventListener("input", () => { state.description = descInput.value; });
+      descInput.addEventListener("input", () => {
+        state.description = descInput.value;
+      });
+      descInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          create();
+        }
+      });
     }
   }
 

@@ -15,6 +15,7 @@
   const selectionBar = document.getElementById("selectionBar");
   const selectionCount = document.getElementById("selectionCount");
   const exportSelectedBtn = document.getElementById("exportSelectedBtn");
+  const selectionDeleteBtn = document.getElementById("selectionDeleteBtn");
 
   function scopeTitle() {
     const ui = store.ui;
@@ -47,6 +48,11 @@
     selectionCount.textContent = `已选 ${count} 个 SKILL`;
     exportSelectedBtn.disabled = count === 0;
     exportSelectedBtn.title = count === 0 ? "先勾选要导出的 SKILL" : `导出所选 ${count} 个 SKILL`;
+    if (selectionDeleteBtn) {
+      selectionDeleteBtn.disabled = count === 0;
+      selectionDeleteBtn.title =
+        count === 0 ? "先勾选要删除的 SKILL" : `删除所选 ${count} 个 SKILL`;
+    }
   }
 
   function render() {

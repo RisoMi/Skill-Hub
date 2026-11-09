@@ -1322,7 +1322,9 @@
 
     const key = skill.name.toLowerCase();
     const records = state.skills.filter((s) => s.name.toLowerCase() === key);
-    const dirs = records.map((r) => r.nativeDir).filter(Boolean);
+    // 按路径去重：同名技能可能挂在多个来源下却指向同一个目录，
+    // 不去重会对同一路径调用两次移动，第二次必然报"目录不存在"
+    const dirs = Array.from(new Set(records.map((r) => r.nativeDir).filter(Boolean)));
 
     const failed = [];
     if (SH.native && SH.native.isNative) {
@@ -1352,6 +1354,108 @@
       failed,
       persisted: !!(SH.native && SH.native.isNative),
     };
+  }
+
+  /**
+   * 批量删除：按技能名去重（同名多副本算一个），逐个目录移入回收站，
+   * 最后一次性提交索引，避免每删一个就重渲染一次。
+   */
+  async function deleteSkills(skillIds) {
+    const ids = Array.from(new Set(skillIds || []));
+    const targets = new Map();
+
+    ids.forEach((id) => {
+      const s = getSkill(id);
+      if (s) targets.set(s.name.toLowerCase(), s.name);
+    });
+    if (!targets.size) return { ok: false, reason: "没有可删除的项" };
+
+    const failed = [];
+
+    // 汇总所有待删目录并按路径去重：同名技能可能挂在多个来源下指向同一目录
+    const dirs = Array.from(
+      new Set(
+        state.skills
+          .filter((s) => targets.has(s.name.toLowerCase()))
+          .map((s) => s.nativeDir)
+          .filter(Boolean)
+      )
+    );
+
+    if (SH.native && SH.native.isNative) {
+      for (const dir of dirs) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await SH.native.removeSkill(dir);
+        } catch (err) {
+          failed.push({ dir, reason: String((err && err.message) || err) });
+        }
+      }
+    }
+
+    const before = state.skills.length;
+    state.skills = state.skills.filter((s) => !targets.has(s.name.toLowerCase()));
+
+    // 选中项若被删掉，同步清理
+    const removedSelected =
+      ui.selectedId &&
+      !state.skills.some((s) => s.id === ui.selectedId);
+    if (removedSelected) ui.selectedId = null;
+    ids.forEach((id) => ui.checked.delete(id));
+
+    persist();
+    emit("delete");
+
+    return {
+      ok: true,
+      names: Array.from(targets.values()),
+      records: before - state.skills.length,
+      dirs: dirs.length,
+      failed,
+      persisted: !!(SH.native && SH.native.isNative),
+    };
+  }
+
+  /**
+   * 本地新建一条 SKILL 记录（写盘成功后调用）。
+   * 不走重扫：重扫只覆盖默认目录，会把自定义目录下的技能冲掉，
+   * 而且重建索引后新技能的 id 也会变，拿不到刚建的那条。
+   */
+  function addLocalSkill({ name, description, sourceId, nativeDir, content }) {
+    const key = String(name || "").toLowerCase();
+    if (!key) return { ok: false, reason: "名称不能为空" };
+
+    const dup = state.skills.find(
+      (s) => s.sourceId === sourceId && s.name.toLowerCase() === key
+    );
+    if (dup) return { ok: false, reason: "该目录下已存在同名 SKILL", skill: dup };
+
+    const text = content || "";
+    const skill = {
+      id: uid("sk"),
+      name,
+      description: description || "",
+      categoryId: guessCategory(name, description || ""),
+      sourceId,
+      version: "v1.0",
+      updatedAt: Date.now(),
+      createdAt: Date.now(),
+      favorite: false,
+      exportable: true,
+      hidden: false,
+      markId: null,
+      tags: [],
+      path: nativeDir,
+      nativeDir,
+      content: text,
+      files: [{ name: "SKILL.md", content: text, size: SH.util.byteLength(text) }],
+      meta: null,
+    };
+
+    state.skills.push(skill);
+    persist();
+    emit("skills");
+    return { ok: true, skill };
   }
 
   /**
@@ -1494,10 +1598,12 @@
     MARK_COLORS,
     importSkills,
     rescan,
+    addLocalSkill,
     setSkillMeta,
     saveSkillFile,
     deleteSkillFile,
     deleteSkill,
+    deleteSkills,
     writeSkillFiles,
     removeSkill,
     resetData,
