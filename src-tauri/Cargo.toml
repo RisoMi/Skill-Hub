@@ -1,6 +1,6 @@
 [package]
 name = "skill-hub"
-version = "0.9.10"
+version = "0.9.11"
 description = "跨平台 SKILL 统一管理器"
 authors = ["Skill Hub"]
 edition = "2021"

@@ -1341,7 +1341,7 @@ html[data-theme="dark"] .btn--primary {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 300;
+  z-index: 500;
   pointer-events: none;
 }
 

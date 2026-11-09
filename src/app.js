@@ -414,6 +414,18 @@
           store.setTab("files");
           SH.editor && SH.editor.open(target.id, "SKILL.md");
         },
+        // 预览：编辑器内的删除确认弹窗（验证层级）
+        editdelete: () => {
+          const target = store
+            .filteredSkills()
+            .find((s) => (s.files || []).some((f) => f.name !== "SKILL.md"));
+          if (!target) return;
+          SH.editor.open(target.id, "SKILL.md");
+          setTimeout(() => {
+            const del = document.querySelector(".se-file__del");
+            if (del) del.click();
+          }, 400);
+        },
         // 预览批量操作条
         select: () => {
           store.filteredSkills().slice(0, 2).forEach((s) => store.toggleCheck(s.id));

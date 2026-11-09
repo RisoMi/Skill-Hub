@@ -2,10 +2,12 @@
    对话框 / 抽屉
    ============================================================ */
 
+/* 层级约定：内容 < 编辑器/回收站(300) < 弹窗/抽屉(400) < toast(500)
+   弹窗必须盖在编辑器之上——编辑器里触发的删除确认不能被自己挡住 */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -989,7 +991,7 @@
   bottom: 0;
   width: 380px;
   max-width: 88vw;
-  z-index: 210;
+  z-index: 410;
   background: var(--surface);
   border-left: 1px solid var(--line);
   box-shadow: var(--shadow-dialog);
