@@ -69,6 +69,98 @@
     current = null;
   }
 
+  /**
+   * 应用内二次确认，返回 Promise<boolean>。
+   *
+   * 不要用 window.confirm：在 Tauri/WebView2 下它可能不弹窗而直接返回 true，
+   * 等于把"二次确认"变成"直接执行"——彻底删除这类操作会直接生效。
+   *
+   * 关闭方式：点按钮、点遮罩、按 Esc、点右上角 ×，都按"取消"处理。
+   */
+  function confirmAction({
+    title,
+    message,
+    detail,
+    confirmText = "确定",
+    cancelText = "取消",
+    danger = false,
+  } = {}) {
+    return new Promise((resolve) => {
+      let settled = false;
+
+      function finish(val) {
+        if (settled) return;
+        settled = true;
+        close();
+        resolve(val);
+      }
+
+      function render() {
+        return `
+          <div class="dialog dialog--xs" role="alertdialog" aria-modal="true"
+               aria-label="${esc(title || "确认")}">
+            <div class="dialog__head">
+              <div class="dialog__title-group">
+                <h2 class="dialog__title">${esc(title || "确认")}</h2>
+              </div>
+              <button class="dialog__close" data-act="cancel" aria-label="关闭">${I.svg(
+                "close",
+                15
+              )}</button>
+            </div>
+            <div class="hline" style="height:1px;background:var(--line)"></div>
+            <div class="dialog__body">
+              <p class="confirm__message">${esc(message || "")}</p>
+              ${detail ? `<p class="confirm__detail">${esc(detail)}</p>` : ""}
+            </div>
+            <div class="dialog__foot">
+              <div class="dialog__foot-hint"></div>
+              <div class="dialog__btns">
+                <button class="btn btn--outline" data-act="cancel">${esc(cancelText)}</button>
+                <button class="btn ${
+                  danger ? "btn--danger" : "btn--primary"
+                }" data-act="ok">${esc(confirmText)}</button>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      function handler(event) {
+        const el = event.target.closest("[data-act]");
+        if (!el) return;
+        if (el.dataset.act === "cancel") finish(false);
+        else if (el.dataset.act === "ok") finish(true);
+      }
+
+      mount(render, handler);
+
+      // 点遮罩视为取消（mount 自带的外层点击只会 close，不会 resolve）
+      const overlay = current && current.overlay;
+      if (overlay) {
+        overlay.addEventListener(
+          "click",
+          (event) => {
+            if (event.target === overlay) finish(false);
+          },
+          true
+        );
+      }
+
+      // Esc 交给全局监听关闭，这里补一次 resolve，避免 Promise 悬空
+      const onEsc = (event) => {
+        if (event.key === "Escape") {
+          finish(false);
+          document.removeEventListener("keydown", onEsc, true);
+        }
+      };
+      document.addEventListener("keydown", onEsc, true);
+
+      // 危险操作默认聚焦"取消"，避免误按回车
+      const cancelBtn = root.querySelector('.dialog__btns [data-act="cancel"]');
+      if (cancelBtn) cancelBtn.focus();
+    });
+  }
+
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && current) {
       event.preventDefault();
@@ -2643,6 +2735,7 @@
   }
 
   SH.dialogs = {
+    confirmAction,
     openExport,
     openImport,
     openAddSource,

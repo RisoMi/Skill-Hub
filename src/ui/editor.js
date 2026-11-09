@@ -276,9 +276,15 @@
     );
   }
 
-  function requestClose() {
+  async function requestClose() {
     if (hasAnyDirty()) {
-      const ok = window.confirm("还有文件没保存，确定关闭吗？");
+      // 不用 window.confirm：Tauri 下它可能不弹窗直接返回 true
+      const ok = await SH.dialogs.confirmAction({
+        title: "放弃未保存的修改？",
+        message: "有文件还没保存，关闭后这些改动会丢失。",
+        confirmText: "放弃并关闭",
+        danger: true,
+      });
       if (!ok) return;
     }
     close();
@@ -296,10 +302,17 @@
     if (act === "delete") {
       const name = el.dataset.file;
       if (!name) return;
-      const ok = window.confirm(
-        `删除 ${name}？\n\n会从技能目录里移除这个文件，无法撤销。`
-      );
-      if (ok) deleteFile(name);
+      SH.dialogs
+        .confirmAction({
+          title: "删除文件",
+          message: `确定删除 ${name}？`,
+          detail: "会从技能目录里移除这个文件，无法撤销。",
+          confirmText: "删除",
+          danger: true,
+        })
+        .then((ok) => {
+          if (ok) deleteFile(name);
+        });
       return;
     }
     if (act === "mode") {

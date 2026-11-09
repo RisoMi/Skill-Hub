@@ -222,7 +222,16 @@
   async function purge(ids) {
     if (busy || !ids.length) return;
     const label = ids.length === 1 ? "这一项" : `这 ${ids.length} 项`;
-    const sure = window.confirm(`彻底删除${label}？\n\n不会保留任何副本，无法恢复。`);
+
+    // 必须用应用内弹窗：window.confirm 在 Tauri 下可能不弹而直接返回 true，
+    // 那就等于没确认就删了
+    const sure = await SH.dialogs.confirmAction({
+      title: "彻底删除",
+      message: `确定要彻底删除${label}吗？`,
+      detail: "不会保留任何副本，删掉就无法恢复。",
+      confirmText: "彻底删除",
+      danger: true,
+    });
     if (!sure) return;
 
     busy = true;

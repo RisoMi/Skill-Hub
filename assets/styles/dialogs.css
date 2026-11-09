@@ -1538,3 +1538,18 @@
   font-size: 10.5px;
   color: var(--danger);
 }
+
+/* 应用内二次确认 */
+.confirm__message {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.confirm__detail {
+  margin: 8px 0 0;
+  font-size: var(--fs-mini);
+  line-height: 1.6;
+  color: var(--text-3);
+}
