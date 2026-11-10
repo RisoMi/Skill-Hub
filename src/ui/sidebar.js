@@ -89,7 +89,7 @@
             ? '<button class="nav-label__action" data-action="clear-source">清除筛选</button>'
             : ""
         }
-        <button class="nav-label__action" data-action="add-source">＋ 新建来源</button>
+        <button class="nav-label__action" data-action="add-source">＋ 选择 Agent</button>
       </div>
       <div class="nav-list">${rows}</div>`;
   }

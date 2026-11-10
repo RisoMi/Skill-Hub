@@ -671,18 +671,40 @@
         .join("");
     }
 
+    /** 常见 Agent 快捷入口：点一下自动填路径与名称 */
+    function agentShortcuts() {
+      const builtins = store.state.sources.filter((s) => s.builtin);
+      if (!builtins.length) return "";
+      return `
+        <div class="field">
+          <span class="field__label">常用 Agent</span>
+          <div class="agent-chips">
+            ${builtins
+              .map(
+                (s) => `<button class="agent-chip" data-act="pick-agent" data-id="${esc(s.id)}"
+                                title="${esc(s.path)}">
+                          <span class="dot" style="background:${store.sourceColor(s)}"></span>
+                          <span>${esc(s.name)}</span>
+                        </button>`
+              )
+              .join("")}
+          </div>
+        </div>`;
+    }
+
     function render() {
       return `
-        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="添加 SKILL 目录">
+        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="选择 Agent">
           <div class="dialog__head">
             <div class="dialog__title-group">
-              <h2 class="dialog__title">添加 SKILL 目录</h2>
-              <p class="dialog__subtitle">选择任意包含 SKILL.md 的目录，自动解析并归类</p>
+              <h2 class="dialog__title">选择 Agent</h2>
+              <p class="dialog__subtitle">点下面的 Agent 自动填入它的技能目录，也可手动指定其它目录</p>
             </div>
             <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
           </div>
           <div style="height:1px;background:var(--line)"></div>
           <div class="dialog__body">
+            ${agentShortcuts()}
             <div class="field">
               <span class="field__label">目录路径</span>
               <div class="input-row">
@@ -891,6 +913,18 @@
       const act = el.dataset.act;
 
       if (act === "close") return close();
+      if (act === "pick-agent") {
+        const src = store.getSource(el.dataset.id);
+        if (!src) return;
+        state.pathText = src.path;
+        state.displayName = src.name;
+        const p = root.querySelector("#sourcePathInput");
+        if (p) p.value = src.path;
+        const n = root.querySelector("#sourceNameInput");
+        if (n) n.value = src.name;
+        return;
+      }
+
       if (act === "browse") return browse();
       if (act === "confirm") return confirm();
       if (act === "edit-source") return openSourceEditor(el.dataset.id);
@@ -2188,7 +2222,12 @@
       if (act === "remove-meta") return removeMeta();
       if (act === "sync-name") {
         state.name = mdName;
-        return refresh();
+        // 只改输入框与提示，不整窗重绘（重绘会闪、也会丢焦点）
+        const input = root.querySelector('input[data-act="name"]');
+        if (input) input.value = mdName;
+        const hint = root.querySelector(".name-pair__hint");
+        if (hint) hint.textContent = nameHintText();
+        return;
       }
     }
 

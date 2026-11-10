@@ -1562,3 +1562,35 @@
   font-size: 9.5px;
   color: var(--text-4);
 }
+
+/* 选择 Agent 的快捷入口 */
+.agent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 13px;
+  font-size: var(--fs-mini);
+  color: var(--text-2);
+  background: var(--surface);
+  transition: border-color 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+.agent-chip:hover {
+  border-color: var(--accent-bright);
+  color: var(--accent);
+}
+
+.agent-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}

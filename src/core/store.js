@@ -1254,6 +1254,25 @@
 
     try {
       await native.writeSkill(root, skill.name, files);
+
+      // 写盘用的是临时数组，*_meta.json 不会自动进 skill.files，
+      // 于是出现「磁盘上有这个文件，但编辑器列表里看不到」。
+      if (skill.meta && skill.meta.fileName) {
+        const metaContent = skill.meta.content || "";
+        const rec = {
+          name: skill.meta.fileName,
+          content: metaContent,
+          size: SH.util.byteLength(metaContent),
+        };
+        const list = skill.files || [];
+        const idx = list.findIndex((f) => f.name === skill.meta.fileName);
+        if (idx >= 0) list[idx] = rec;
+        else list.push(rec);
+        skill.files = list;
+        persist();
+        emit("files");
+      }
+
       return { ok: true };
     } catch (err) {
       return { ok: false, reason: String((err && err.message) || err) };
