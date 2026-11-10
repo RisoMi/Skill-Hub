@@ -70,7 +70,9 @@
     }
 
     const base = data && Array.isArray(data.skills) && data.skills.length ? data : defaults;
-    state.sources = base.sources || clone(defaults.sources);
+    state.sources = (base.sources || clone(defaults.sources)).map((s) =>
+      Object.assign({}, s, { enabled: s.enabled !== false })
+    );
     state.categories = base.categories || clone(defaults.categories);
     state.skills = base.skills || clone(defaults.skills);
     state.marks = Array.isArray(base.marks) ? base.marks : [];
@@ -269,6 +271,8 @@
       pool.filter((s) => {
         // 隐藏的 SKILL 只在「隐藏」栏里出现，避免 Agent 内置技能干扰正常浏览
         if (inHiddenTab ? !s.hidden : s.hidden) return false;
+        // 停用的来源整体不参与列表
+        if (!isSourceEnabled(s.sourceId)) return false;
         return (
           matchesQuery(s, ui.query) &&
           matchesFilter(s) &&
@@ -696,11 +700,32 @@
     state.sources.forEach((s) => {
       map[s.id] = 0;
     });
+    // 停用的来源不计入，避免侧栏数字和列表对不上
     state.skills.forEach((s) => {
+      if (!isSourceEnabled(s.sourceId)) return;
       if (map[s.sourceId] === undefined) map[s.sourceId] = 0;
       map[s.sourceId] += 1;
     });
     return map;
+  }
+
+  /** 来源是否启用（未设置的视为启用） */
+  function isSourceEnabled(sourceId) {
+    const src = getSource(sourceId);
+    return !src || src.enabled !== false;
+  }
+
+  function setSourceEnabled(sourceId, enabled) {
+    const src = getSource(sourceId);
+    if (!src) return { ok: false, reason: "来源不存在" };
+    src.enabled = !!enabled;
+
+    // 停用后如果当前正筛选它，退回「全部」
+    if (!src.enabled && ui.sourceId === sourceId) ui.sourceId = "all";
+
+    persist();
+    emit("sources");
+    return { ok: true, enabled: src.enabled };
   }
 
   function categoryCounts() {
@@ -1584,6 +1609,8 @@
     removeCategory,
     categoryColor,
     sourceColor,
+    isSourceEnabled,
+    setSourceEnabled,
     getMark,
     markColor,
     markCounts,

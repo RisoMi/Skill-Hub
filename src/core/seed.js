@@ -47,7 +47,7 @@
       name: "豆包工作",
       path: "~/Doubao/skills",
       colorVar: "--src-doubao",
-      readonly: true,
+      readonly: false,
       builtin: true,
     },
     {

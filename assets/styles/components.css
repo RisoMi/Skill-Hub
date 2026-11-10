@@ -680,6 +680,13 @@ html[data-theme="dark"] .btn--primary {
   background: var(--accent-soft-bg);
 }
 
+/* 列表行的勾选框也要有实心反馈，否则勾了看不出来（卡片选择器只覆盖 .card） */
+.skill-row.is-selected .card__check {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 .skill-row.is-active {
   /* 与卡片保持一致的识别方式：左侧强调条 + 淡色底 */
   box-shadow: inset 3px 0 0 var(--accent);
@@ -1993,4 +2000,41 @@ html[data-theme="dark"] .btn--primary {
   min-width: 16px;
   text-align: right;
   color: var(--text-4);
+}
+
+/* 来源启用/停用开关：hover 出现，停用时常驻可见 */
+.nav-row__toggle {
+  position: relative;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s var(--ease), background 0.12s var(--ease);
+}
+
+.nav-row__toggle span {
+  position: absolute;
+  top: 2px;
+  left: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.12s var(--ease);
+}
+
+.nav-row__toggle.is-off {
+  background: var(--line-strong);
+  opacity: 1;
+}
+
+.nav-row__toggle.is-off span {
+  left: 2px;
+}
+
+.nav-row:hover .nav-row__toggle,
+.nav-row:focus-within .nav-row__toggle {
+  opacity: 1;
 }

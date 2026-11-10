@@ -120,6 +120,14 @@
 
   /* ---------------- 事件 ---------------- */
   function onScrollClick(event) {
+    const srcBtn = event.target.closest('[data-action="edit-source-of"]');
+    if (srcBtn) {
+      event.stopPropagation();
+      const skill = store.getSkill(srcBtn.dataset.id);
+      if (skill && SH.dialogs) SH.dialogs.openSourceEditor(skill.sourceId);
+      return;
+    }
+
     const markBtn = event.target.closest('[data-action="mark-skill"]');
     if (markBtn) {
       event.stopPropagation();

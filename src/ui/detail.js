@@ -31,6 +31,8 @@
                 data-action="tab" data-tab="installs" role="tab">安装 ${counts.installed}/${counts.total}</button>
         <button class="insp-tab ${ui.activeTab === "meta" ? "is-active" : ""}"
                 data-action="tab" data-tab="meta" role="tab">元信息</button>
+        <button class="insp-tab ${ui.activeTab === "sourcemark" ? "is-active" : ""}"
+                data-action="tab" data-tab="sourcemark" role="tab">来源标记</button>
       </div>`;
   }
 
@@ -182,6 +184,22 @@
       .join("")}</div>${metaBlock}`;
   }
 
+  /** 基本信息（不含来源标记区块） */
+  function infoHtml(skill) {
+    const full = metaHtml(skill);
+    const i = full.indexOf('<div class="meta-section">');
+    return i >= 0 ? full.slice(0, i) : full;
+  }
+
+  /** 来源标记单独成 tab，内容复用 metaHtml 里的区块 */
+  function markHtml(skill) {
+    const full = metaHtml(skill);
+    const i = full.indexOf('<div class="meta-section">');
+    return i >= 0
+      ? full.slice(i)
+      : `<div class="file-hint">这个 SKILL 没有来源标记。</div>`;
+  }
+
   function syncResultHtml(last) {
     const summary = last.summary || {};
     const results = last.results || [];
@@ -322,7 +340,9 @@
         : ui.activeTab === "installs"
         ? installsHtml(skill)
         : ui.activeTab === "meta"
-        ? metaHtml(skill)
+        ? infoHtml(skill)
+        : ui.activeTab === "sourcemark"
+        ? markHtml(skill)
         : previewHtml(skill);
 
     panel.innerHTML = `

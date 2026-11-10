@@ -92,6 +92,12 @@
       return invoke("delete_skill_file", { dir, name });
     },
 
+    /** 读取目录内文件并返回 base64（图片预览用） */
+    async readFileBase64(dir, name) {
+      if (!isNative) throw new Error("浏览器预览无法读取本地文件");
+      return invoke("read_file_base64", { dir, name });
+    },
+
     /** 回收站：列表 / 还原 / 彻底删除 */
     async listTrash() {
       if (!isNative) return [];

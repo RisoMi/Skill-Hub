@@ -333,6 +333,21 @@ fn pick_directory(app: tauri::AppHandle) -> Option<String> {
         .map(|p| p.to_string_lossy().to_string())
 }
 
+fn expand_home(p: &str) -> String {
+    let s = p.trim();
+    if s == "~" {
+        if let Some(home) = home_dir() {
+            return home.to_string_lossy().to_string();
+        }
+    }
+    if let Some(rest) = s.strip_prefix("~/").or_else(|| s.strip_prefix("~\\")) {
+        if let Some(home) = home_dir() {
+            return home.join(rest).to_string_lossy().to_string();
+        }
+    }
+    s.to_string()
+}
+
 #[tauri::command]
 fn write_skill(
     app: tauri::AppHandle,
@@ -340,6 +355,7 @@ fn write_skill(
     name: String,
     files: Vec<WriteFile>,
 ) -> Result<String, String> {
+    let root = expand_home(&root);
     if root.trim().is_empty() {
         return Err("目标目录为空".into());
     }
@@ -551,6 +567,49 @@ fn purge_trash(app: tauri::AppHandle, id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 极简 base64 编码（避免为一个功能引入新依赖）
+fn b64_encode(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0] as u32;
+        let b1 = *chunk.get(1).unwrap_or(&0) as u32;
+        let b2 = *chunk.get(2).unwrap_or(&0) as u32;
+        let n = (b0 << 16) | (b1 << 8) | b2;
+        out.push(TABLE[(n >> 18) as usize & 63] as char);
+        out.push(TABLE[(n >> 12) as usize & 63] as char);
+        out.push(if chunk.len() > 1 {
+            TABLE[(n >> 6) as usize & 63] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            TABLE[n as usize & 63] as char
+        } else {
+            '='
+        });
+    }
+    out
+}
+
+/// 读取技能目录下的文件并返回 base64（用于图片预览）
+#[tauri::command]
+fn read_file_base64(dir: String, name: String) -> Result<String, String> {
+    if !is_safe_relative(&name) {
+        return Err(format!("非法的文件名：{name}"));
+    }
+    let p = PathBuf::from(&dir).join(&name);
+    if !p.is_file() {
+        return Err("文件不存在".into());
+    }
+    let size = fs::metadata(&p).map(|m| m.len()).unwrap_or(0);
+    if size > 8 * 1024 * 1024 {
+        return Err("文件超过 8MB，暂不支持预览".into());
+    }
+    let bytes = fs::read(&p).map_err(|e| e.to_string())?;
+    Ok(b64_encode(&bytes))
+}
+
 /// 删除技能目录下的单个文件（清除元数据标记时用）
 #[tauri::command]
 fn delete_skill_file(dir: String, name: String) -> Result<(), String> {
@@ -754,6 +813,7 @@ pub fn run() {
             write_skill,
             remove_skill,
             delete_skill_file,
+            read_file_base64,
             list_trash,
             restore_trash,
             purge_trash,

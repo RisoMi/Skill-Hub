@@ -19,13 +19,22 @@
     { id: "hidden", label: "隐藏" },
   ];
 
-  function navRow({ id, name, count, color, active, readonly, kind, editable }) {
+  function navRow({ id, name, count, color, active, readonly, kind, editable, enabled }) {
     return `
       <div class="nav-row ${active ? "is-active" : ""}" data-kind="${kind}" data-id="${esc(id)}"
            role="button" tabindex="0" aria-pressed="${active ? "true" : "false"}">
         <span class="dot" style="background:${color}"></span>
         <span class="nav-row__name" title="${esc(name)}">${esc(name)}</span>
         ${readonly ? '<span class="nav-row__ro">只读</span>' : ""}
+        ${
+          kind === "source"
+            ? `<button class="nav-row__toggle ${enabled === false ? "is-off" : ""}"
+                       data-action="toggle-source" data-id="${esc(id)}"
+                       title="${enabled === false ? "已停用，点击启用" : "启用中，点击停用"}"
+                       aria-pressed="${enabled !== false}"
+                       aria-label="启用或停用 ${esc(name)}"><span></span></button>`
+            : ""
+        }
         ${
           editable
             ? `<button class="nav-row__edit" data-action="edit-${kind}" data-id="${esc(id)}"
@@ -68,6 +77,7 @@
           readonly: src.readonly,
           kind: "source",
           editable: true,
+          enabled: src.enabled !== false,
         })
       )
       .join("");
@@ -270,6 +280,16 @@
         stop();
         const res = store.setSkillHidden(actionEl.dataset.id, false);
         if (res.ok) SH.toast("已恢复到列表", "ok");
+        return;
+      }
+      if (action === "toggle-source") {
+        stop();
+        const cur = store.state.sources.find((s) => s.id === actionEl.dataset.id);
+        const next = !(cur && cur.enabled !== false);
+        const res = store.setSourceEnabled(actionEl.dataset.id, next);
+        if (res.ok) {
+          SH.toast(next ? "已启用该来源" : "已停用该来源，其 SKILL 不再显示", next ? "ok" : "info");
+        }
         return;
       }
       if (action === "clear-source") {

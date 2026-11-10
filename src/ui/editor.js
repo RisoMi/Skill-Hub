@@ -1,11 +1,14 @@
 /* ------------------------------------------------------------
    editor.js · 独立的技能编辑模式
    ------------------------------------------------------------
-   与侧边栏的只读预览区分开：这里是一层覆盖全窗口的编辑页，
-   左边是完整文件清单，右边是可编辑的正文（.md 支持预览）。
+   左边是完整文件清单，右边按文件类型给不同的编辑体验：
+   - .md   左编辑 / 右实时预览（可切单栏）
+   - .json 编辑 + 一键格式化
+   - 图片  直接预览（走后端 base64）
+   - 其它  纯文本
 
-   为什么不在侧边栏里编辑：详情面板宽度有限，编辑器需要足够空间，
-   而且侧边栏被主列表挤压时编辑体验很差。
+   注意：所有「状态变化」都只做局部 DOM 更新，不整窗重绘，
+   否则动画会重放（闪一下）、输入框也会失焦。
    ------------------------------------------------------------ */
 (function () {
   const SH = window.SH;
@@ -18,13 +21,27 @@
     open: false,
     skillId: null,
     file: null,
-    /** "edit" | "preview"，仅对 .md 生效 */
-    mode: "edit",
-    /** 文件名 -> 未保存的正文 */
+    /** md 是否分栏实时预览 */
+    split: true,
     dirty: {},
     newMode: false,
     error: "",
   };
+
+  /** 图片 base64 缓存：key = skillId::fileName；null=加载中，false=失败 */
+  const imageCache = {};
+
+  const IMAGE_RE = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
+  const MD_RE = /\.md$/i;
+  const JSON_RE = /\.json$/i;
+
+  function fileKind(name) {
+    const n = String(name || "");
+    if (IMAGE_RE.test(n)) return "image";
+    if (MD_RE.test(n)) return "md";
+    if (JSON_RE.test(n)) return "json";
+    return "text";
+  }
 
   function ensureRoot() {
     if (root) return root;
@@ -40,7 +57,6 @@
 
   const currentSkill = () => (state.skillId ? store.getSkill(state.skillId) : null);
   const filesOf = (skill) => (skill && Array.isArray(skill.files) ? skill.files : []);
-  const isMd = (name) => /\.md$/i.test(String(name || ""));
 
   function contentOf(skill, fileName) {
     if (state.dirty[fileName] !== undefined) return state.dirty[fileName];
@@ -51,18 +67,41 @@
   const isDirty = (name) => state.dirty[name] !== undefined;
   const hasAnyDirty = () => Object.keys(state.dirty).length > 0;
 
+  /* ---------------- 图片异步加载 ---------------- */
+
+  async function loadImage(skill, file) {
+    const key = `${skill.id}::${file}`;
+    if (imageCache[key] !== undefined) return;
+    imageCache[key] = null;
+
+    if (!SH.native.isNative || !skill.nativeDir) {
+      imageCache[key] = false;
+      if (state.open && state.file === file) render();
+      return;
+    }
+    try {
+      const b64 = await SH.native.readFileBase64(skill.nativeDir, file);
+      imageCache[key] = b64 || false;
+    } catch (err) {
+      imageCache[key] = false;
+    }
+    if (state.open && state.file === file) render();
+  }
+
   /* ---------------- 渲染 ---------------- */
 
   function fileListHtml(skill) {
     const files = filesOf(skill);
     if (!files.length) return `<div class="se-empty">这个技能还没有文件</div>`;
     return files
-      .map(
-        (f) => `
+      .map((f) => {
+        const kind = fileKind(f.name);
+        const icon = kind === "image" ? "eye" : kind === "md" ? "doc" : "file";
+        return `
         <div class="se-file-row">
           <button class="se-file ${f.name === state.file ? "is-active" : ""}"
                   data-act="file" data-file="${esc(f.name)}">
-            ${SH.icons.svg(isMd(f.name) ? "doc" : "file", 12)}
+            ${SH.icons.svg(icon, 12)}
             <span class="se-file__name truncate">${esc(f.name)}</span>
             ${isDirty(f.name) ? `<span class="se-file__dot" title="未保存"></span>` : ""}
           </button>
@@ -72,19 +111,44 @@
               : `<button class="se-file__del" data-act="delete" data-file="${esc(f.name)}"
                         title="删除 ${esc(f.name)}">${SH.icons.svg("trash", 12)}</button>`
           }
-        </div>`
-      )
+        </div>`;
+      })
       .join("");
   }
 
   function mainHtml(skill, file, text) {
-    if (!file) {
-      return `<div class="se-placeholder">左侧选一个文件开始编辑</div>`;
+    if (!file) return `<div class="se-placeholder">左侧选一个文件开始编辑</div>`;
+    const kind = fileKind(file);
+
+    if (kind === "image") {
+      const key = `${skill.id}::${file}`;
+      const b64 = imageCache[key];
+      if (b64 === undefined || b64 === null) {
+        loadImage(skill, file);
+        return `<div class="se-placeholder">正在加载图片…</div>`;
+      }
+      if (!b64) {
+        return `<div class="se-placeholder">这张图读不出来（可能超过 8MB，或不在本地目录）</div>`;
+      }
+      const ext = file.toLowerCase().split(".").pop();
+      const mime = ext === "svg" ? "image/svg+xml" : `image/${ext.replace("jpg", "jpeg")}`;
+      return `<div class="se-image">
+        <img src="data:${mime};base64,${b64}" alt="${esc(file)}">
+        <span class="se-image__name">${esc(file)}</span>
+      </div>`;
     }
-    if (isMd(file) && state.mode === "preview") {
-      const body = SH.md.splitFrontmatter(text).body;
-      return `<div class="se-preview md">${SH.md.render(body)}</div>`;
+
+    if (kind === "md" && state.split) {
+      return `
+        <div class="se-split">
+          <textarea id="seTextarea" class="se-textarea se-textarea--split" spellcheck="false"
+                    placeholder="在这里编辑 ${esc(file)}">${esc(text)}</textarea>
+          <div class="se-split__preview md" id="sePreview">${SH.md.render(
+            SH.md.splitFrontmatter(text).body
+          )}</div>
+        </div>`;
     }
+
     return `
       <textarea id="seTextarea" class="se-textarea" spellcheck="false"
                 placeholder="在这里编辑 ${esc(file)}">${esc(text)}</textarea>`;
@@ -96,9 +160,8 @@
 
     const file = state.file;
     const text = file ? contentOf(skill, file) : "";
-    const md = isMd(file);
+    const kind = fileKind(file);
 
-    // 标题用展示名；副标题在两者相同时改用来源名，避免重复显示同一个词
     const display = store.displayName(skill);
     const subLabel = display !== skill.name ? skill.name : store.sourceName(skill.sourceId);
 
@@ -117,14 +180,24 @@
           </div>
           <div class="se-bar__right">
             ${
-              md
-                ? `<button class="se-btn" data-act="mode" title="切换预览">
-                     ${SH.icons.svg("eye", 13)}
-                     <span>${state.mode === "preview" ? "继续编辑" : "预览"}</span>
+              kind === "md"
+                ? `<button class="se-btn" data-act="split" title="切换分栏预览">
+                     ${SH.icons.svg("eye", 13)}<span>${state.split ? "单栏" : "分栏预览"}</span>
                    </button>`
                 : ""
             }
-            <button class="se-btn se-btn--primary" data-act="save" title="保存（Ctrl/Cmd + S）">
+            ${
+              kind === "json"
+                ? `<button class="se-btn" data-act="format-json" title="格式化 JSON">
+                     ${SH.icons.svg("code", 13)}<span>格式化</span>
+                   </button>`
+                : ""
+            }
+            <button class="se-btn" data-act="make-meta" title="按 Agent 生成元数据文件">
+              ${SH.icons.svg("tag", 13)}<span>生成 meta</span>
+            </button>
+            <button class="se-btn se-btn--primary" data-act="save"
+                    title="保存（Ctrl/Cmd + S）">
               ${SH.icons.svg("save", 13)}<span>保存</span>
             </button>
           </div>
@@ -161,7 +234,9 @@
             state.error ? "is-error" : ""
           }">${esc(state.error || "Ctrl / Cmd + S 保存 · Esc 关闭")}</span>
           <span class="se-foot__stat">${
-            file ? `${esc(file)} · ${SH.util.byteLength(text)} 字节${isDirty(file) ? " · 未保存" : ""}` : "未选择文件"
+            file
+              ? `${esc(file)} · ${SH.util.byteLength(text)} 字节${isDirty(file) ? " · 未保存" : ""}`
+              : "未选择文件"
           }</span>
         </footer>
       </div>`;
@@ -169,7 +244,7 @@
     if (state.newMode) {
       const input = root.querySelector("#seNewFile");
       if (input) input.focus();
-    } else if (!md || state.mode === "edit") {
+    } else if (kind !== "image") {
       const area = root.querySelector("#seTextarea");
       if (area) area.focus();
     }
@@ -185,7 +260,9 @@
     const stat = root.querySelector(".se-foot__stat");
     if (stat) {
       const text = contentOf(skill, file);
-      stat.textContent = `${file} · ${SH.util.byteLength(text)} 字节${isDirty(file) ? " · 未保存" : ""}`;
+      stat.textContent = `${file} · ${SH.util.byteLength(text)} 字节${
+        isDirty(file) ? " · 未保存" : ""
+      }`;
     }
     const box = root.querySelector(".se-files__list");
     if (box) box.innerHTML = fileListHtml(skill);
@@ -196,7 +273,6 @@
   function switchFile(name) {
     if (!name || name === state.file) return;
     state.file = name;
-    state.mode = "edit";
     state.error = "";
     render();
   }
@@ -223,6 +299,40 @@
     );
   }
 
+  /** JSON 一键美化 */
+  function formatJson() {
+    const area = root.querySelector("#seTextarea");
+    if (!area || !state.file) return;
+    try {
+      const pretty = JSON.stringify(JSON.parse(area.value), null, 2) + "\n";
+      area.value = pretty;
+      state.dirty[state.file] = pretty;
+      state.error = "";
+      refreshStatus();
+      SH.toast("已格式化，记得保存", "ok");
+    } catch (err) {
+      state.error = `JSON 解析失败：${String((err && err.message) || err)}`;
+      const hint = root.querySelector(".se-foot__hint");
+      if (hint) {
+        hint.textContent = state.error;
+        hint.classList.add("is-error");
+      }
+    }
+  }
+
+  /** 按 Agent 生成 *_meta.json，全程不离开编辑器 */
+  async function makeMeta() {
+    const skill = currentSkill();
+    if (!skill) return;
+
+    const done = await SH.dialogs.pickAgentMeta(skill);
+    if (!done) return;
+
+    // 元数据写入后可能多了文件，重渲染一次让左侧列表同步
+    render();
+    SH.toast("元数据已生成，可在左侧文件列表查看", "ok");
+  }
+
   async function createFile() {
     const input = root.querySelector("#seNewFile");
     const name = (input ? input.value : "").trim().replace(/\\/g, "/");
@@ -243,7 +353,6 @@
 
     state.newMode = false;
     state.file = name;
-    state.mode = "edit";
     state.error = "";
     render();
     SH.toast(`已创建 ${name}`, "ok");
@@ -264,7 +373,6 @@
     if (state.file === name) {
       const rest = filesOf(skill);
       state.file = rest.length ? rest[0].name : null;
-      state.mode = "edit";
     }
     state.error = "";
     render();
@@ -297,8 +405,29 @@
     if (!el) return;
     const act = el.dataset.act;
 
-    if (act === "close") return requestClose();
+    if (act === "close") return void requestClose();
     if (act === "file") return switchFile(el.dataset.file);
+
+    if (act === "split") {
+      state.split = !state.split;
+      return render();
+    }
+
+    if (act === "format-json") return formatJson();
+    if (act === "make-meta") return void makeMeta();
+
+    if (act === "new") {
+      state.newMode = true;
+      state.error = "";
+      return render();
+    }
+    if (act === "cancel-new") {
+      state.newMode = false;
+      return render();
+    }
+    if (act === "create") return void createFile();
+    if (act === "save") return void save();
+
     if (act === "delete") {
       const name = el.dataset.file;
       if (!name) return;
@@ -313,29 +442,20 @@
         .then((ok) => {
           if (ok) deleteFile(name);
         });
-      return;
     }
-    if (act === "mode") {
-      state.mode = state.mode === "edit" ? "preview" : "edit";
-      return render();
-    }
-    if (act === "save") return void save();
-    if (act === "new") {
-      state.newMode = true;
-      state.error = "";
-      return render();
-    }
-    if (act === "cancel-new") {
-      state.newMode = false;
-      return render();
-    }
-    if (act === "create") return void createFile();
   }
 
   function onInput(event) {
     const area = event.target;
     if (!area || area.id !== "seTextarea" || !state.file) return;
+
     state.dirty[state.file] = area.value;
+
+    // MD 分栏时实时刷新右侧预览
+    const preview = root.querySelector("#sePreview");
+    if (preview) {
+      preview.innerHTML = SH.md.render(SH.md.splitFrontmatter(area.value).body);
+    }
     refreshStatus();
   }
 
@@ -371,14 +491,14 @@
     state.dirty = {};
     state.error = "";
     state.newMode = false;
-    state.mode = "edit";
+    state.split = true;
 
     const files = filesOf(skill);
     const requested = fileName ? files.find((f) => f.name === fileName) : null;
     const preferred =
       requested ||
       files.find((f) => /^SKILL\.md$/i.test(f.name)) ||
-      files.find((f) => isMd(f.name)) ||
+      files.find((f) => MD_RE.test(f.name)) ||
       files[0];
     state.file = preferred ? preferred.name : null;
 

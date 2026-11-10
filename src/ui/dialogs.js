@@ -1183,6 +1183,101 @@
   }
 
   /**
+   * 选择 Agent 元数据格式并生成 *_meta.json。
+   * 供编辑器使用：生成后不跳走，留在编辑页即可看到新文件。
+   */
+  function pickAgentMeta(skill) {
+    return new Promise((resolve) => {
+      const formats = SH.meta.FORMATS || [];
+      const current = (skill.meta && skill.meta.formatId) || null;
+
+      if (!formats.length) {
+        SH.toast("没有可用的元数据格式", "warn");
+        resolve(false);
+        return;
+      }
+
+      function render() {
+        return `
+          <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="生成元数据">
+            <div class="dialog__head">
+              <div class="dialog__title-group">
+                <h2 class="dialog__title">生成来源标记</h2>
+                <p class="dialog__subtitle">按所选 Agent 的格式写入对应文件</p>
+              </div>
+              <button class="dialog__close" data-act="cancel" aria-label="关闭">${I.svg(
+                "close",
+                15
+              )}</button>
+            </div>
+            <div class="hline" style="height:1px;background:var(--line)"></div>
+            <div class="dialog__body">
+              <div class="mark-picker">
+                ${formats
+                  .map(
+                    (f) => `
+                  <button class="mark-item ${current === f.id ? "is-active" : ""}"
+                          data-act="pick" data-id="${esc(f.id)}">
+                    <span class="dot" style="background:var(--accent)"></span>
+                    <span class="mark-item__name">${esc(f.agentName)} · ${esc(f.label)}</span>
+                    <span class="mark-item__file">${esc(f.fileName)}</span>
+                  </button>`
+                  )
+                  .join("")}
+              </div>
+            </div>
+            <div class="dialog__foot">
+              <div class="dialog__foot-hint">已有标记会被覆盖</div>
+              <div class="dialog__btns">
+                <button class="btn btn--outline" data-act="cancel">取消</button>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      let settled = false;
+      function finish(val) {
+        if (settled) return;
+        settled = true;
+        close();
+        resolve(val);
+      }
+
+      async function pick(id) {
+        try {
+          const built = await SH.meta.build(skill, id);
+          const res = await store.setSkillMeta(skill.id, {
+            formatId: built.formatId,
+            fileName: built.fileName,
+            content: built.content,
+          });
+          if (!res.ok) {
+            SH.toast(res.reason || "生成失败", "error");
+            finish(false);
+            return;
+          }
+          if (res.persisted === false) {
+            SH.toast(`已生成记录，但未写入磁盘：${res.reason || "请用桌面版"}`, "warn");
+          }
+          finish(true);
+        } catch (err) {
+          SH.toast(`生成失败：${String((err && err.message) || err)}`, "error");
+          finish(false);
+        }
+      }
+
+      function handler(event) {
+        const el = event.target.closest("[data-act]");
+        if (!el) return;
+        if (el.dataset.act === "cancel") return finish(false);
+        if (el.dataset.act === "pick") return void pick(el.dataset.id);
+      }
+
+      mount(render, handler);
+    });
+  }
+
+  /**
    * 删除 SKILL（单个或批量）：列出将被移入回收站的目录，二次确认后执行。
    * @param {string|string[]} input 技能 id 或 id 数组
    */
@@ -1313,7 +1408,8 @@
       SH.toast("浏览器预览无法写入磁盘，请在桌面版新建", "warn");
       return;
     }
-    const writable = store.state.sources.filter((s) => s.nativePath && !s.readonly);
+    // 只要不是只读就能建：没有 nativePath 的来源用配置里的 path（后端会展开 ~）
+    const writable = store.state.sources.filter((s) => !s.readonly);
     if (!writable.length) {
       SH.toast("先添加一个可写的 SKILL 目录", "warn");
       return;
@@ -1416,7 +1512,8 @@
       }
 
       const src = store.getSource(state.sourceId);
-      if (!src || !src.nativePath) return showError("所选目录不可用");
+      const rootPath = src && (src.nativePath || src.path);
+      if (!rootPath) return showError("所选来源没有可用路径");
 
       showError("");
       setBusy(true);
@@ -1424,8 +1521,10 @@
       const description = desc || "新建的 SKILL";
       const content = `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n\n${description}\n`;
 
+      let nativeDir = "";
       try {
-        await SH.native.writeSkill(src.nativePath, name, [
+        // 返回的就是绝对目标目录（后端已展开 ~）
+        nativeDir = await SH.native.writeSkill(rootPath, name, [
           { name: "SKILL.md", content },
         ]);
       } catch (err) {
@@ -1433,9 +1532,6 @@
         showError(`写入失败：${String((err && err.message) || err)}`);
         return;
       }
-
-      const sep = String(src.nativePath).indexOf("\\") >= 0 ? "\\" : "/";
-      const nativeDir = `${String(src.nativePath).replace(/[\\/]+$/, "")}${sep}${name}`;
 
       const res = store.addLocalSkill({
         name,
@@ -2500,7 +2596,13 @@
         const src = store.getSource(id);
         if (!src || src.readonly) return;
         state.targetId = id;
-        return refresh();
+        // 只切选中态：整窗 refresh 会闪一下，也会把已解析的结果重绘
+        root.querySelectorAll(".agent-row").forEach((row) => {
+          const on = row.dataset.id === id;
+          row.classList.toggle("is-selected", on);
+          row.setAttribute("aria-pressed", String(on));
+        });
+        return;
       }
       if (act === "toggle-item") {
         const index = Number(el.dataset.index);
@@ -2741,6 +2843,7 @@
     openAddSource,
     openNewSkill,
     openDeleteSkill,
+    pickAgentMeta,
     openMarkEditor,
     openMarkPicker,
     openCategoryEditor,

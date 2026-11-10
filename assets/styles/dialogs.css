@@ -1555,3 +1555,10 @@
   line-height: 1.6;
   color: var(--text-3);
 }
+
+.mark-item__file {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-4);
+}
