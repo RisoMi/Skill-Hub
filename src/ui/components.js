@@ -114,8 +114,8 @@
                     aria-label="标记 ${esc(skill.name)}"
                     ${mark ? `style="color:${markHue}"` : ""}>${I.svg("flag", 12)}</button>
             <button class="card__act" data-action="edit-source-of" data-id="${esc(skill.id)}"
-                    title="编辑来源：${esc(src)}"
-                    aria-label="编辑 ${esc(src)} 来源">${I.svg("gear", 12)}</button>
+                    title="编辑来源标记（*_meta.json）"
+                    aria-label="编辑 ${esc(skill.name)} 的来源标记">${I.svg("tag", 12)}</button>
             <button class="card__act" data-action="hide-skill" data-id="${esc(skill.id)}"
                     title="隐藏（可在侧栏「隐藏」中恢复）"
                     aria-label="隐藏 ${esc(skill.name)}">${I.svg("eyeOff", 12)}</button>

@@ -123,8 +123,8 @@
     const srcBtn = event.target.closest('[data-action="edit-source-of"]');
     if (srcBtn) {
       event.stopPropagation();
-      const skill = store.getSkill(srcBtn.dataset.id);
-      if (skill && SH.dialogs) SH.dialogs.openSourceEditor(skill.sourceId);
+      // 「编辑来源」= 编辑这个 SKILL 的来源标记（*_meta.json）
+      if (SH.dialogs) SH.dialogs.openMetaEditor(srcBtn.dataset.id);
       return;
     }
 
