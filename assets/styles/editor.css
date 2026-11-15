@@ -266,7 +266,7 @@ body.is-editing-skill {
   padding: 0 8px;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-btn);
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: 11px;

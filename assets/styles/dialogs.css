@@ -343,13 +343,19 @@
 .input {
   height: 42px;
   padding: 0 12px;
-  background: var(--surface);
+  /* 底色比纯白低一档，和米色主体融为一体，不再是突兀的白框 */
+  background-color: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: var(--radius-btn);
   font-size: var(--fs-body);
   color: var(--text);
   outline: none;
-  transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  transition: background-color 0.12s var(--ease), border-color 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+
+.input:hover {
+  border-color: var(--line-strong);
 }
 
 .input::placeholder {
@@ -357,8 +363,25 @@
 }
 
 .input:focus {
+  background-color: var(--surface);
   border-color: var(--accent-bright);
   box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+/* 下拉框：去掉系统外观，与输入框完全统一 */
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 30px;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2390918c' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+
+select.input option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .input--mono {
@@ -372,7 +395,7 @@
   gap: 10px;
   height: 42px;
   padding: 0 12px;
-  background: var(--surface);
+  background-color: var(--surface-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-btn);
   transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
@@ -1110,19 +1133,37 @@
 .select {
   width: 100%;
   height: 34px;
-  padding: 0 8px;
-  background: var(--surface);
+  padding: 0 26px 0 8px;
+  /* 与 .input 保持同一底色，去掉系统原生白底与箭头 */
+  background-color: var(--surface-2);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-btn);
   font-size: 11px;
   color: var(--text);
   outline: none;
-  transition: border-color 0.12s var(--ease), box-shadow 0.12s var(--ease);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2390918c' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: background-color 0.12s var(--ease), border-color 0.12s var(--ease),
+    box-shadow 0.12s var(--ease);
+}
+
+.select:hover {
+  border-color: var(--accent-bright);
 }
 
 .select:focus {
+  background-color: var(--surface);
   border-color: var(--accent-bright);
   box-shadow: 0 0 0 3px var(--accent-bg);
+}
+
+.select option {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .swatches {
