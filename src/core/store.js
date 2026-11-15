@@ -71,7 +71,7 @@
 
     const base = data && Array.isArray(data.skills) && data.skills.length ? data : defaults;
     state.sources = (base.sources || clone(defaults.sources)).map((s) =>
-      Object.assign({}, s, { enabled: s.enabled !== false })
+      Object.assign({}, s, { enabled: s.enabled !== false, hidden: !!s.hidden })
     );
     state.categories = base.categories || clone(defaults.categories);
     state.skills = base.skills || clone(defaults.skills);
@@ -713,6 +713,19 @@
   function isSourceEnabled(sourceId) {
     const src = getSource(sourceId);
     return !src || src.enabled !== false;
+  }
+
+  /**
+   * 隐藏来源：只影响左侧来源列表的显示，不影响它下面的 SKILL。
+   * 与 enabled 的区别：enabled=false 是「停用」，技能不再进列表。
+   */
+  function setSourceHidden(sourceId, hidden) {
+    const src = getSource(sourceId);
+    if (!src) return { ok: false, reason: "来源不存在" };
+    src.hidden = !!hidden;
+    persist();
+    emit("sources");
+    return { ok: true, hidden: src.hidden };
   }
 
   function setSourceEnabled(sourceId, enabled) {
@@ -1630,6 +1643,7 @@
     sourceColor,
     isSourceEnabled,
     setSourceEnabled,
+    setSourceHidden,
     getMark,
     markColor,
     markCounts,

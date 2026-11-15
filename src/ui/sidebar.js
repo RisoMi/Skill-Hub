@@ -66,7 +66,17 @@
   /* ---------------- 各栏内容 ---------------- */
 
   function sourcePanel(ui, counts) {
-    const rows = store.state.sources
+    const visible = store.state.sources.filter((src) => !src.hidden);
+
+    if (!visible.length) {
+      return `
+        <div class="nav-panel__head">
+          <button class="nav-label__action" data-action="add-source">＋ 选择 Agent</button>
+        </div>
+        <div class="nav-empty">所有来源都已隐藏。<br>点上面「选择 Agent」把需要的显示出来。</div>`;
+    }
+
+    const rows = visible
       .map((src) =>
         navRow({
           id: src.id,

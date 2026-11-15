@@ -650,12 +650,14 @@
       return store.state.sources
         .map(
           (src) => `
-          <div class="source-row">
+          <div class="source-row ${src.hidden ? "is-hidden" : ""}" data-row="${esc(src.id)}">
             <span class="dot" style="background:${store.sourceColor(src)}"></span>
             <span class="source-row__name" title="${esc(src.name)}">${esc(src.name)} · ${
             store.sourceCounts()[src.id] || 0
           } 个</span>
             <span class="source-row__path">${esc(src.path)}</span>
+            <button class="source-row__remove" data-act="toggle-source-hidden"
+                    data-id="${esc(src.id)}">${src.hidden ? "显示" : "隐藏"}</button>
             <button class="source-row__remove" data-act="edit-source" data-id="${esc(
               src.id
             )}">编辑</button>
@@ -913,6 +915,24 @@
       const act = el.dataset.act;
 
       if (act === "close") return close();
+      if (act === "toggle-source-hidden") {
+        const id = el.dataset.id;
+        const rec = store.state.sources.find((s) => s.id === id);
+        const next = !(rec && rec.hidden);
+        const res = store.setSourceHidden(id, next);
+        if (!res.ok) return;
+
+        // 局部更新，不重绘弹窗
+        const row = root.querySelector(`[data-row="${id}"]`);
+        if (row) row.classList.toggle("is-hidden", next);
+        el.textContent = next ? "显示" : "隐藏";
+        SH.toast(
+          next ? "已隐藏该来源（其 SKILL 仍会出现在列表里）" : "已显示该来源",
+          next ? "info" : "ok"
+        );
+        return;
+      }
+
       if (act === "pick-agent") {
         const src = store.getSource(el.dataset.id);
         if (!src) return;
