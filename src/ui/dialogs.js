@@ -2751,6 +2751,128 @@
       脚本会先列出所有将被删除的目录与体积，确认后才执行，清理完自动检查残留。</p>`;
   }
 
+  /* ---------------- 外观：明暗 × 配色 ---------------- */
+  /** 设置面板与「外观与配色」弹窗共用同一段 HTML 与同一个处理器 */
+  function appearanceHtml() {
+    const prefs = store.state.prefs;
+    const active = SH.palettes.get(prefs.palette);
+    const themeNames = { light: "浅色", dark: "深色", system: "跟随系统" };
+    return `
+      <div class="sheet__group">
+        <span class="sheet__label">明暗模式</span>
+        <div class="seg-choose" data-role="theme-choose">
+          ${["light", "dark", "system"]
+            .map(
+              (v) =>
+                `<button class="seg-choose__btn ${prefs.theme === v ? "is-active" : ""}"
+                  data-act="theme" data-value="${v}" aria-pressed="${prefs.theme === v}">${themeNames[v]}</button>`
+            )
+            .join("")}
+        </div>
+        <p class="sheet__desc">「跟随系统」会读取操作系统外观；切换只影响配色，字号与三栏尺寸不变。</p>
+      </div>
+
+      <div class="sheet__divider"></div>
+
+      <div class="sheet__group">
+        <span class="sheet__label">配色方案<span class="label-hint">5 套 · 每套都支持浅色 / 深色</span></span>
+        <div class="palette-grid" data-role="palette-grid">
+          ${SH.palettes.list
+            .map((p) => {
+              const on = p.key === active.key;
+              const half = (c) => `
+                <span class="pc-half" style="background:${c.bg}">
+                  <i style="background:${c.surface}"></i>
+                  <b style="background:${c.primary}"></b>
+                  <em style="border-color:${c.signal}"></em>
+                </span>`;
+              return `
+              <button class="palette-card ${on ? "is-active" : ""}" data-act="palette"
+                      data-value="${p.key}" aria-pressed="${on}" title="${esc(p.desc)}">
+                <span class="palette-card__preview">${half(p.light)}${half(p.dark)}</span>
+                <span class="palette-card__meta">
+                  <span class="palette-card__name">${esc(p.name)}</span>
+                  <span class="palette-card__badge">${esc(p.badge)}</span>
+                </span>
+              </button>`;
+            })
+            .join("")}
+        </div>
+        <p class="sheet__desc" data-role="palette-desc">${esc(active.desc)}</p>
+      </div>`;
+  }
+
+  /**
+   * 切换外观一律局部改 class / 文本，不 refresh() 重绘整个弹窗：
+   * 重绘会重放入场动画、丢焦点，看起来就是「闪一下」。
+   */
+  function appearanceHandler(event) {
+    const el = event.target.closest("[data-act]");
+    if (!el) return false;
+    const act = el.dataset.act;
+
+    if (act === "theme") {
+      store.setPref("theme", el.dataset.value);
+      SH.applyPrefs();
+      const group = el.closest("[data-role='theme-choose']");
+      group.querySelectorAll("[data-act='theme']").forEach((b) => {
+        const on = b.dataset.value === el.dataset.value;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      return true;
+    }
+
+    if (act === "palette") {
+      const key = SH.palettes.normalize(el.dataset.value);
+      store.setPref("palette", key);
+      SH.applyPrefs();
+      const grid = el.closest("[data-role='palette-grid']");
+      grid.querySelectorAll("[data-act='palette']").forEach((b) => {
+        const on = b.dataset.value === key;
+        b.classList.toggle("is-active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      const desc = grid.parentElement.querySelector("[data-role='palette-desc']");
+      if (desc) desc.textContent = SH.palettes.get(key).desc;
+      return true;
+    }
+    return false;
+  }
+
+  /** 工具栏的调色板按钮：直达外观，不必绕设置面板 */
+  function openAppearance() {
+    function render() {
+      return `
+        <div class="sheet sheet--appearance" role="dialog" aria-modal="true" aria-label="外观与配色">
+          <div class="sheet__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title" style="font-size:15px">外观与配色</h2>
+              <p class="dialog__subtitle">5 套配色 × 浅色 / 深色</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="sheet__body">
+            ${appearanceHtml()}
+            <div class="sheet__divider"></div>
+            <div class="sheet__group">
+              <p class="sheet__desc">配色与明暗分别保存，重启后保持上次选择。切换时整界面即时生效，不需要重新扫描。</p>
+            </div>
+          </div>
+          <div class="sheet__foot">
+            <button class="btn btn--primary" data-act="close">完成</button>
+          </div>
+        </div>`;
+    }
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      if (el.dataset.act === "close") return close();
+      appearanceHandler(event);
+    }
+    mount(render, handler);
+  }
+
   function openSettings() {
     const state = {};
 
@@ -2766,22 +2888,7 @@
             <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
           </div>
           <div class="sheet__body">
-            <div class="sheet__group">
-              <span class="sheet__label">主题</span>
-              <div class="seg-choose">
-                ${["light", "dark", "system"]
-                  .map(
-                    (v) =>
-                      `<button class="seg-choose__btn ${
-                        prefs.theme === v ? "is-active" : ""
-                      }" data-act="theme" data-value="${v}">${
-                        v === "light" ? "浅色" : v === "dark" ? "深色" : "跟随系统"
-                      }</button>`
-                  )
-                  .join("")}
-              </div>
-              <p class="sheet__desc">深色只映射背景与文字，结构与间距保持不变。</p>
-            </div>
+            ${appearanceHtml()}
 
             <div class="sheet__divider"></div>
 
@@ -2863,6 +2970,8 @@
 
       if (act === "close") return close();
 
+      if (appearanceHandler(event)) return;
+
       if (act === "export-uninstaller") {
         SH.native
           .exportUninstaller()
@@ -2871,11 +2980,6 @@
         return;
       }
 
-      if (act === "theme") {
-        store.setPref("theme", el.dataset.value);
-        SH.applyPrefs();
-        return refresh();
-      }
       if (act === "platform") {
         store.setPref("platform", el.dataset.value);
         SH.applyPrefs();
@@ -2909,6 +3013,7 @@
     openSourceEditor,
     openMetaEditor,
     openSettings,
+    openAppearance,
     close,
   };
 })();

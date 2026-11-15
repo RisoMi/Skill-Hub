@@ -46,6 +46,7 @@
     syncAt: 0,
     prefs: {
       theme: "light",
+      palette: "classic",
       platform: "auto",
     },
   };
@@ -77,7 +78,12 @@
     state.skills = base.skills || clone(defaults.skills);
     state.marks = Array.isArray(base.marks) ? base.marks : [];
     state.syncAt = base.syncAt || Date.now();
-    state.prefs = Object.assign({ theme: "light", platform: "auto" }, prefs || {});
+    state.prefs = Object.assign(
+      { theme: "light", platform: "auto", palette: SH.palettes.default },
+      prefs || {}
+    );
+    // 旧存档或手改 localStorage 可能留下未知配色名，统一退回默认
+    state.prefs.palette = SH.palettes.normalize(state.prefs.palette);
   }
 
   let saveTimer = null;
@@ -1588,6 +1594,7 @@
   }
 
   function setPref(key, value) {
+    if (key === "palette") value = SH.palettes.normalize(value);
     state.prefs[key] = value;
     persist();
     emit("pref");

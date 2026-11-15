@@ -123,13 +123,17 @@ body.is-editing-skill {
 
 .se-btn--primary {
   border-color: transparent;
-  background: var(--accent);
-  color: #fff;
+  background: var(--primary-bg, var(--accent));
+  color: var(--on-accent);
+  font-weight: 650;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 3px 9px -3px var(--accent-shadow, rgba(0, 0, 0, 0.22));
 }
 
 .se-btn--primary:hover {
-  background: var(--accent-bright);
-  color: #fff;
+  background: var(--primary-bg, var(--accent));
+  color: var(--on-accent);
+  filter: brightness(1.06);
 }
 
 .se-btn--tiny {
@@ -204,7 +208,7 @@ body.is-editing-skill {
 
 .se-file__del:hover {
   background: var(--surface);
-  color: var(--danger, #c0392b);
+  color: var(--danger);
 }
 
 .se-file {
@@ -239,7 +243,7 @@ body.is-editing-skill {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--warn, #c98a2e);
+  background: var(--warn-text);
   flex: 0 0 auto;
 }
 
@@ -335,7 +339,7 @@ body.is-editing-skill {
 }
 
 .se-foot__hint.is-error {
-  color: var(--danger, #c0392b);
+  color: var(--danger);
 }
 
 .se-foot__stat {

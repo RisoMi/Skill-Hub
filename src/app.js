@@ -23,6 +23,8 @@
     let theme = prefs.theme;
     if (theme === "system") theme = media.matches ? "dark" : "light";
     root.dataset.theme = theme;
+    // 配色与明暗是两个独立维度：5 套配色 × 浅/深
+    root.dataset.palette = SH.palettes.normalize(prefs.palette);
 
     let platform = prefs.platform;
     if (platform === "auto") platform = SH.util.isMac() ? "mac" : "win";
@@ -179,6 +181,7 @@
     $("importBtn").addEventListener("click", () => SH.dialogs.openImport());
     $("newSkillBtn").addEventListener("click", () => SH.dialogs.openNewSkill());
     $("settingsBtn").addEventListener("click", () => SH.dialogs.openSettings());
+    $("appearanceBtn").addEventListener("click", () => SH.dialogs.openAppearance());
     $("trashBtn").addEventListener("click", () => SH.trash.open());
     $("rescanBtn").addEventListener("click", rescan);
 
@@ -386,6 +389,7 @@
         },
         add: () => SH.dialogs.openAddSource(),
         settings: () => SH.dialogs.openSettings(),
+        appearance: () => SH.dialogs.openAppearance(),
         // 预览两个平台的设置面板（浏览器里没有 SH.runtime，这里造一份）
         settingsmac: () => {
           SH.runtime = {

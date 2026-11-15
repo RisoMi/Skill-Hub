@@ -225,7 +225,7 @@ Windows 整个文件夹拷走即可迁移；macOS 迁移请连同上面两个 `L
 | 02 主界面 · macOS | 同一套内容，标题栏切交通灯、快捷键切 `Cmd`，可在设置里手动切换预览 |
 | 03 导出打包 | ZIP / 文件夹两种格式、三项包含内容、保存位置、实时体积摘要 |
 | 04 添加 SKILL 目录 | 目录授权读取、递归扫描 SKILL.md、来源列表增删 |
-| 05 设计规范 | 视觉 token 落到 `tokens.css`，含浅 / 深双主题 |
+| 05 设计规范 | 视觉 token 落到 `tokens.css` / `palettes.css`，5 套配色 × 浅 / 深双主题 |
 | 06 导入 · 选择目标 Agent | 包解析摘要 + 6 个来源单选列表（路径 / 可写状态 / 已有数量） |
 | 07 导入确认 | 目标回显与更改、待导入清单、同名冲突标记、跳过 / 覆盖备份 / 重命名 |
 | 分类管理 | 侧栏「＋ 新建」；分类行悬停「⋯」可改名、换色、删除（删除时技能迁到「其他」） |
@@ -241,7 +241,32 @@ Windows 整个文件夹拷走即可迁移；macOS 迁移请连同上面两个 `L
 - 详情三个 Tab：Markdown 渲染（含 frontmatter 高亮）、关联文件浏览、元信息表
 - 收藏、复制路径、`↑ ↓` 键盘移动、`Ctrl/Cmd + R` 重新扫描
 - 空状态（无数据 / 无结果）、扫描进度、错误提示、Toast 反馈
-- 浅色 / 深色 / 跟随系统；窄窗口下详情转为可滑出浮层
+- 浅色 / 深色 / 跟随系统；5 套配色随时切换，选择写入偏好并即时生效
+- 工具栏调色板按钮、设置抽屉都可打开「外观」；切换只局部更新选中态与说明文字，不重绘窗口
+- 窄窗口下详情转为可滑出浮层
+
+### 外观与配色切换
+
+配色是与明暗**正交**的维度：`data-theme` 管浅 / 深，`data-palette` 管配色方案，组合共 10 组。
+`assets/styles/palettes.css` 由 `design/gen-palettes.cjs` 按设计稿色值表生成（唯一数据源），每块 53 个变量；
+新增方案时改生成器里的色值表 + `src/core/palettes.js` 的元数据即可，**不要手改生成的 CSS**。
+
+| id | 方案 | 设计语言 |
+|---|---|---|
+| `classic` | 现状 · 暖米青绿 | 旧版保留，便于对照 |
+| `indigo` | 靛蓝 | 冷灰蓝底 + 高饱和强调 |
+| `teal` | 青绿提纯 | 冷白微蓝底 + teal 强调 |
+| `graphite` | 石墨极简 | 近黑 / 纯白主操作，琥珀只作状态色 |
+| `aurora` | 柔雾紫 | 渐变主按钮 + 大圆角 |
+
+关键变量：`--primary-bg`（主操作填充，允许渐变）、`--on-accent`（主按钮文字）、
+`--signal`（选中 / 焦点状态色）、`--accent-shadow`。`graphite` 正是靠 `primary-bg ≠ accent` 才立得住；
+其余方案生成器会自动把两者补齐为各自强调色。
+
+切换链路：`setPref('palette', id)` → `applyPrefs()` 写 `data-palette` 并暂存偏好；
+切换瞬间给根节点加禁用过渡的 class，避免按钮背景在动画中途闪出旧色。
+组件侧用新变量实现 Primary / Secondary / Tertiary / Danger 阶梯，卡片操作项常态可见并带底色边框，
+选中卡片用 `--signal` 左条。验证脚本：`node design/check-palettes.cjs`。
 
 ---
 
@@ -622,7 +647,8 @@ Skill-Hub/
 │  │  ├─ metaFormats.js        来源标记格式注册 / 生成 / 识别（含宽松 JSON 解析）
 │  │  ├─ zip.js                ZIP 读写（store 写 / store+deflate 读）
 │  │  ├─ store.js              状态、筛选、分组、持久化、导入落库
-│  │  └─ importExport.js       导入解析与导出打包
+│  │  ├─ importExport.js       导入解析与导出打包
+│  │  └─ palettes.js           5 套配色的元数据与合法性校验
 │  ├─ ui/
 │  │  ├─ icons.js              内联 SVG 图标集
 │  │  ├─ components.js         卡片 / 行 / 分组 / 空状态片段
@@ -632,9 +658,11 @@ Skill-Hub/
 │  │  └─ dialogs.js            导入 / 导出 / 添加目录 / 设置
 │  └─ app.js                   启动、全局事件、快捷键
 └─ assets/styles/
-   ├─ tokens.css               设计 token（浅 / 深双主题）
+   ├─ tokens.css               基础 token 与变量别名
+   ├─ palettes.css             5 套配色 × 浅 / 深，共 10 组变量（design/gen-palettes.cjs 生成）
    ├─ layout.css               外壳与三栏
    ├─ components.css           通用组件
+   ├─ editor.css               编辑器
    └─ dialogs.css              对话框与抽屉
 ```
 
@@ -673,6 +701,7 @@ fn write_skills(target: String, bundle: PathBuf) -> ImportReport;
 ?demo=export      导出对话框
 ?demo=add         添加目录
 ?demo=settings    设置抽屉
+?demo=appearance  外观与配色切换
 ?demo=dark        深色主题
 ?demo=list        列表视图
 ?demo=mac         macOS 标题栏

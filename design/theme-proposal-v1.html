@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Hub · 主题配色提案 v1</title>
+<style>
+/* ============================================================
+   Skill Hub · 主题配色提案 v1（静态设计稿，不加载产品代码）
+   顶部切换方案；左右并排为浅色 / 深色，同步预览
+   ============================================================ */
+:root{
+  --doc-bg:#eef1f6;
+  --doc-card:#ffffff;
+  --doc-text:#111827;
+  --doc-text-2:#5b6679;
+  --doc-line:#dfe5ee;
+  --doc-accent:#3f4a63;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--doc-bg);
+  color:var(--doc-text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;cursor:pointer}
+.page{max-width:1520px;margin:0 auto;padding:28px 28px 64px}
+
+/* ---------- 文档头 ---------- */
+.doc{background:var(--doc-card);border:1px solid var(--doc-line);border-radius:16px;padding:24px 26px;margin-bottom:20px;box-shadow:0 6px 22px -16px rgba(16,24,40,.28)}
+.doc__top{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.doc__eyebrow{font-size:10px;letter-spacing:.16em;color:#8a94a6;font-weight:700;margin-bottom:8px}
+.doc h1{font-size:23px;line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}
+.doc__sub{font-size:12.5px;color:var(--doc-text-2);line-height:1.7;margin:0;max-width:640px}
+.switcher{display:inline-flex;gap:4px;padding:4px;background:#f2f5fa;border:1px solid var(--doc-line);border-radius:10px}
+.switcher button{border:0;background:transparent;color:#5b6679;font-size:12px;padding:8px 14px;border-radius:7px;white-space:nowrap;transition:.14s}
+.switcher button:hover{color:#1f2937;background:#e8edf5}
+.switcher button.is-on{background:#1f2937;color:#fff;box-shadow:0 2px 6px rgba(16,24,40,.18)}
+.doc__meta{margin-top:18px;padding-top:14px;border-top:1px solid var(--doc-line);display:flex;gap:18px;flex-wrap:wrap;font-size:11.5px;color:var(--doc-text-2)}
+.doc__meta b{color:var(--doc-text);font-weight:600}
+.tagdoc{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:5px;background:#eef2f8;color:#4b5a72;font-size:10.5px;font-weight:600}
+
+/* ---------- 舞台 ---------- */
+.stage{display:grid;grid-template-columns:repeat(2,minmax(510px,1fr));gap:20px;align-items:start}
+@media(max-width:1160px){.stage{grid-template-columns:1fr}}
+.preview{background:#e7ebf3;border:1px solid #d9e0ea;border-radius:16px;padding:16px;min-width:0}
+.preview__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 2px}
+.preview__head h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.02em;color:#3c4658}
+.preview__head span{font-size:10.5px;color:#7b8698}
+
+/* ---------- 模拟窗口（主题变量由 JS 注入到 .preview 上） ---------- */
+.window{
+  background:var(--bg);border:1px solid var(--line-strong);border-radius:var(--radius-window);
+  overflow:hidden;box-shadow:0 14px 34px -18px rgba(8,14,26,.45);
+  color:var(--text);font-size:11.5px;
+}
+.win-tb{height:38px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:650;color:var(--text)}
+.brand__mark{width:18px;height:18px;border-radius:5px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex:0 0 18px}
+.brand__mark svg{width:12px;height:12px}
+.brand__v{font-size:9px;color:var(--text-3);font-weight:500;margin-left:2px}
+.win-tb__fill{flex:1}
+.win-ctl{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--text-3)}
+.win-ctl svg{width:10px;height:10px}
+.win-ctl--close:hover{background:#e81123;color:#fff}
+
+.win-ws{display:flex;min-height:434px}
+
+/* 侧栏 */
+.side{width:158px;flex:0 0 158px;background:var(--bg);border-right:1px solid var(--line);padding:11px 9px 10px;display:flex;flex-direction:column;gap:9px}
+.search{height:28px;display:flex;align-items:center;gap:6px;padding:0 8px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-btn);color:var(--text-3)}
+.search svg{width:12px;height:12px;flex:0 0 12px}
+.search span{font-size:10.5px}
+.kbd{margin-left:auto;font-family:ui-monospace,Consolas,monospace;font-size:8.5px;background:var(--chip-bg);color:var(--text-3);padding:2px 4px;border-radius:4px}
+.side__group{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--text-4);padding:4px 8px 2px;text-transform:uppercase}
+.nav-row{height:27px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:var(--radius-btn);color:var(--text-2);font-size:10.8px;position:relative}
+.nav-row svg{width:12px;height:12px;flex:0 0 12px;opacity:.85}
+.nav-row__n{margin-left:auto;font-size:9.5px;color:var(--text-4);font-variant-numeric:tabular-nums}
+.nav-row.is-on{background:var(--accent-bg);color:var(--accent-text);font-weight:600}
+.nav-row.is-on::before{content:"";position:absolute;left:-9px;top:5px;bottom:5px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.stage[data-variant="current"] .nav-row.is-on::before{display:none}
+.side__fill{flex:1}
+.cta{height:32px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:var(--radius-btn);font-size:11px;font-weight:600;letter-spacing:.01em}
+.cta svg{width:12px;height:12px}
+.sync{display:flex;align-items:center;gap:6px;font-size:9.5px;color:var(--text-3);padding:2px 4px}
+.sync i{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.16)}
+.side__link{height:26px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:var(--radius-btn);color:var(--text-2);font-size:10.8px}
+.side__link svg{width:12px;height:12px}
+
+/* 内容区 */
+.main{flex:1;min-width:0;background:var(--surface);padding:14px 15px 12px;display:flex;flex-direction:column;gap:11px}
+.main__head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.main__title{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:650;letter-spacing:-.01em;color:var(--text)}
+.count{font-family:ui-monospace,Consolas,monospace;font-size:9px;color:var(--text-2);background:var(--chip-bg);padding:2px 6px;border-radius:5px}
+.main__sub{font-size:10px;color:var(--text-3);margin-top:5px}
+.actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:29px;padding:0 10px;border-radius:var(--radius-btn);font-size:10.5px;white-space:nowrap;border:1px solid var(--line);background:var(--surface);color:var(--text-2);transition:.14s}
+.btn svg{width:11px;height:11px}
+.btn--primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:650;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 9px -3px var(--accent-shadow)}
+.btn--primary:hover{transform:translateY(-1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 6px 14px -4px var(--accent-shadow)}
+.btn--secondary{background:var(--surface-2);border-color:var(--line-strong);color:var(--text)}
+.btn--secondary:hover{border-color:var(--accent);color:var(--accent-text);background:var(--accent-bg)}
+.btn--ghost{background:transparent;border-color:transparent;color:var(--text-2)}
+.btn--ghost:hover{background:var(--surface-3)}
+.btn--danger{background:var(--danger-bg);border-color:color-mix(in srgb,var(--danger) 35%,transparent);color:var(--danger);font-weight:600}
+.btn--danger:hover{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn--disabled{opacity:.42}
+/* 现状：主按钮无阴影无内高光，次要按钮是白底细线，层级扁平 */
+.stage[data-variant="current"] .btn--primary{box-shadow:none;background:var(--accent);color:#fff;font-weight:500}
+.stage[data-variant="current"] .btn--primary:hover{transform:none;box-shadow:none}
+.stage[data-variant="current"] .btn--secondary{background:var(--surface);border-color:var(--line);color:var(--text-2)}
+.stage[data-variant="current"] .btn--secondary:hover{background:var(--surface-3);border-color:var(--line-strong);color:var(--text-2)}
+.stage[data-variant="current"] .btn--danger{background:transparent;border-color:transparent;font-weight:400}
+
+.seg{display:inline-flex;padding:2px;gap:2px;background:var(--chip-bg);border-radius:var(--radius-btn);height:29px;align-items:center}
+.seg span{width:24px;height:23px;display:flex;align-items:center;justify-content:center;border-radius:5px;color:var(--text-3)}
+.seg span svg{width:11px;height:11px}
+.seg span.is-on{background:var(--surface);color:var(--accent);box-shadow:var(--shadow-card)}
+
+.filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chip{height:23px;padding:0 10px;border-radius:12px;font-size:10px;border:1px solid transparent;background:transparent;color:var(--text-2)}
+.chip:hover{background:var(--surface-3)}
+.chip.is-on{background:var(--accent-bg);border-color:color-mix(in srgb,var(--accent) 28%,transparent);color:var(--accent-text);font-weight:600}
+.stage[data-variant="current"] .chip.is-on{background:var(--chip-bg);border-color:transparent;color:var(--text-2);font-weight:400}
+.filters__count{margin-left:auto;font-size:9.5px;color:var(--text-4)}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.card{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:11px 11px 9px;box-shadow:var(--shadow-card);overflow:hidden}
+.card:hover{border-color:var(--line-strong);box-shadow:0 4px 14px -6px rgba(8,14,26,.22)}
+.card.is-selected{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent),var(--shadow-card)}
+.card.is-selected::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.stage[data-variant="current"] .card.is-selected{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 40%,transparent),var(--shadow-card)}
+.card__top{display:flex;align-items:center;gap:8px}
+.card__ico{width:26px;height:26px;flex:0 0 26px;border-radius:7px;background:var(--accent-bg);color:var(--accent-text);display:flex;align-items:center;justify-content:center}
+.card__ico svg{width:14px;height:14px}
+.card__name{font-size:11.5px;font-weight:650;color:var(--text);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card__check{position:absolute;right:10px;top:11px;width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line-strong)}
+.card.is-selected .card__check{background:var(--accent);border-color:var(--accent)}
+.card.is-selected .card__check::after{content:"";position:absolute;left:4px;top:1px;width:3px;height:7px;border:solid var(--on-accent);border-width:0 1.6px 1.6px 0;transform:rotate(42deg)}
+.card__desc{font-size:9.8px;line-height:1.55;color:var(--text-3);margin:8px 0 9px;height:30px;overflow:hidden}
+.card__foot{display:flex;align-items:center;gap:5px;border-top:1px solid var(--line);padding-top:8px}
+.src-dot{width:6px;height:6px;border-radius:50%;flex:0 0 6px;background:var(--src-claude)}
+.card__src{font-size:9px;color:var(--text-3)}
+.card__acts{margin-left:auto;display:flex;gap:4px;opacity:1;transition:opacity .14s}
+.act{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;background:var(--surface-3);border:1px solid var(--line);color:var(--text-2)}
+.act svg{width:11px;height:11px}
+.act:hover{background:var(--accent-bg);border-color:color-mix(in srgb,var(--accent) 35%,transparent);color:var(--accent-text)}
+.act--danger:hover{background:var(--danger-bg);border-color:color-mix(in srgb,var(--danger) 35%,transparent);color:var(--danger)}
+/* 现状：操作项 hover 才出现且无底色 */
+.stage[data-variant="current"] .card__acts{opacity:0}
+.stage[data-variant="current"] .card:hover .card__acts{opacity:1}
+.stage[data-variant="current"] .act{background:transparent;border-color:transparent;width:18px;height:18px}
+
+.selbar{margin-top:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-radius:var(--radius-card);background:var(--surface-2);border:1px solid var(--line-strong);box-shadow:var(--shadow-card)}
+.selbar__n{font-size:10px;color:var(--text);font-weight:600}
+.selbar__fill{flex:1}
+.selbar .btn{height:26px;font-size:10px;padding:0 9px}
+.selbar__clear{font-size:10px;color:var(--text-3)}
+
+/* ---------- 组件样本（同样跟随主题，避免深色组件被放在浅底上失真） ---------- */
+.specimen{margin-top:14px;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:14px;box-shadow:var(--shadow-card)}
+.specimen h3{margin:0 0 4px;font-size:11.5px;font-weight:700;color:var(--text)}
+.specimen p{margin:0 0 12px;font-size:10.5px;color:var(--text-3);line-height:1.6}
+.spec-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px 0;border-top:1px dashed var(--line)}
+.spec-row:first-of-type{border-top:0;padding-top:2px}
+.spec-label{width:76px;flex:0 0 76px;font-size:9.5px;color:var(--text-3)}
+.field{height:28px;display:flex;align-items:center;padding:0 9px;min-width:118px;background:var(--surface-2);border:1px solid var(--line-strong);border-radius:var(--radius-btn);font-size:10.5px;color:var(--text)}
+.field.is-focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent);color:var(--text)}
+.field--placeholder{color:var(--text-4)}
+.field svg{width:11px;height:11px;margin-left:auto;color:var(--text-3)}
+.toggle{width:32px;height:18px;border-radius:10px;background:var(--accent);position:relative}
+.toggle::after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.toggle--off{background:var(--line-strong)}
+.toggle--off::after{right:auto;left:2px}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.sw{width:52px}
+.sw i{display:block;height:24px;border-radius:6px;border:1px solid var(--line)}
+.sw span{display:block;font-size:8.5px;color:var(--text-3);margin-top:4px;font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+
+/* ---------- token 表 ---------- */
+.tokens{background:var(--doc-card);border:1px solid var(--doc-line);border-radius:16px;padding:22px 26px;margin-top:22px;box-shadow:0 6px 22px -16px rgba(16,24,40,.28)}
+.tokens h2{margin:0 0 6px;font-size:15px}
+.tokens>p{margin:0 0 16px;font-size:11.5px;color:var(--doc-text-2)}
+.tbl{width:100%;border-collapse:collapse;font-size:11px;min-width:720px}
+.tbl-wrap{overflow-x:auto}
+.tbl th,.tbl td{text-align:left;padding:9px 10px;border-bottom:1px solid #edf0f5;vertical-align:middle}
+.tbl th{font-size:10px;color:#8792a4;font-weight:600;letter-spacing:.02em}
+.tbl th.is-on{color:#1f2937;background:#f3f6fb}
+.tbl td.is-on{background:#f7f9fd}
+.tbl td:first-child{color:#424d60;font-weight:600;width:130px}
+.cellhex{font-family:ui-monospace,Consolas,monospace;font-size:9.5px;color:#6b7688;line-height:1.7}
+.pair{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.pair i{width:16px;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.12);flex:0 0 16px}
+.pair em{font-style:normal;color:#98a2b2;font-size:9px;width:20px}
+
+/* ---------- 说明 ---------- */
+.notes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}
+@media(max-width:900px){.notes{grid-template-columns:1fr}}
+.note{background:var(--doc-card);border:1px solid var(--doc-line);border-radius:14px;padding:18px 20px}
+.note h3{margin:0 0 8px;font-size:12.5px}
+.note p,.note li{font-size:11.5px;line-height:1.8;color:var(--doc-text-2);margin:0}
+.note ul{margin:0;padding-left:18px}
+.note b{color:var(--doc-text)}
+.note__num{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;border-radius:6px;background:#eef2f8;color:#4b5a72;font-size:10px;font-weight:700;margin-right:7px}
+.foot{text-align:center;font-size:10.5px;color:#98a2b2;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="doc">
+    <div class="doc__top">
+      <div>
+        <div class="doc__eyebrow">SKILL HUB / THEME PROPOSAL V1</div>
+        <h1>主题配色 · 第一稿</h1>
+        <p class="doc__sub">把暖米色 + 低饱和青绿换成冷中性底 + 高对比强调色，并重排按钮层级：主操作一眼可见、卡片操作项常态可发现。左右两栏分别是浅色与深色，点上方按钮可在「现状」与两版提案之间对照。</p>
+      </div>
+      <div class="switcher" id="switcher">
+        <button data-v="current">现状 0.9.16</button>
+        <button data-v="indigo">提案 A · 靛蓝</button>
+        <button data-v="teal" class="is-on">提案 B · 青绿提纯（推荐）</button>
+      </div>
+    </div>
+    <div class="doc__meta">
+      <span class="tagdoc">仅设计预览</span>
+      <span>未改动 <b>tokens.css</b>、组件样式或任何产品代码</span>
+      <span>推荐 <b>提案 B</b>：延续现有品牌色相，改动集中在变量与按钮类</span>
+      <span>当前查看：<b id="currentName">提案 B · 青绿提纯</b></span>
+    </div>
+  </header>
+
+  <main class="stage" id="stage" data-variant="teal">
+    <section class="preview" data-scheme="light">
+      <div class="preview__head"><h2>LIGHT / 浅色</h2><span>窗口底 · 侧栏 · 内容区</span></div>
+      <div class="preview__body"></div>
+    </section>
+    <section class="preview" data-scheme="dark">
+      <div class="preview__head"><h2>DARK / 深色</h2><span>同一套语义变量，反向映射</span></div>
+      <div class="preview__body"></div>
+    </section>
+  </main>
+
+  <section class="tokens">
+    <h2>色值对照</h2>
+    <p>每格上行为浅色、下行为深色。高亮列为当前预览方案。语义变量名与产品 <b>tokens.css</b> 一致，落地时可直接替换值。</p>
+    <div class="tbl-wrap"><table class="tbl" id="tokenTable"></table></div>
+  </section>
+
+  <section class="notes">
+    <div class="note">
+      <h3><span class="note__num">1</span>现状的问题</h3>
+      <ul>
+        <li>浅色底 <b>#f8f6f2</b> 偏黄、深色底 <b>#1e211f</b> 带绿味，与青绿强调色同色系，整体发闷、层次靠 1px 线硬撑。</li>
+        <li>强调色 <b>#3e7a72</b> 饱和度过低，主按钮与「导入 / 排序」等次要按钮视觉重量几乎相同。</li>
+        <li>卡片操作按钮默认 <b>opacity:0</b>，只能靠 hover 发现；批量条里的删除是纯文字，看不出危险层级。</li>
+        <li>深色下 <b>--accent</b> 变亮、<b>--accent-bright</b> 反而更暗，两个 token 的强弱关系在两套主题里是反的。</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3><span class="note__num">2</span>这稿改了什么</h3>
+      <ul>
+        <li><b>中性色去色偏</b>：浅色改冷白微蓝，深色改深蓝灰，卡片 / 侧栏 / 内容区三层明差拉开。</li>
+        <li><b>强调色提纯</b>：A 用靛蓝 #4f46e5，B 用深青 #0f766e；深色统一翻成高亮版，并新增 <b>--on-accent</b> 保证按钮文字对比度。</li>
+        <li><b>按钮四阶梯</b>：Primary 实心 + 内高光 + 彩色投影；Secondary 浅底 + 实边框；Tertiary 幽灵；Danger 常态带浅红底。</li>
+        <li><b>操作项常态可见</b>：卡片图标按钮给底色与边框，hover 转强调色；删除转危险色。</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3><span class="note__num">3</span>顺带统一的状态与形状</h3>
+      <ul>
+        <li>选中卡片：3px 强调色左条 + 2px 柔光描边；选中 chip / 侧栏项：强调色浅底 + 强调色文字 + 左侧指示条。</li>
+        <li>输入框焦点：强调色边框 + 3px 光晕；圆角按钮 6→8、卡片 8→12、窗口 12→14。</li>
+        <li>字号、三栏宽度、状态栏高度<b>全部不变</b>，避免牵动已有布局与滚动逻辑。</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3><span class="note__num">4</span>落地范围与风险</h3>
+      <ul>
+        <li>主要改 <b>assets/styles/tokens.css</b>（变量值 + 新增 --on-accent / --accent-shadow），其次 <b>components.css</b> 的 .btn / .chip / .card__act / .skill-row.is-selected；dialogs.css、editor.css 沿用变量即可。</li>
+        <li>标题栏品牌图标与 selection-bar 里有<b>硬编码 #6BA8A0</b>，选 A 必须同步；选 B 也建议统一到新值。</li>
+        <li>来源 / 分类标识色本稿保留原值，避免一次改太多；如要更现代可另出第二稿。</li>
+        <li>不改 JS、不改结构尺寸，不触碰已验证的主题切换逻辑。</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="foot">Skill Hub · 主题提案 v1 · 静态设计稿，等你确认方案后再落地到产品样式</div>
+</div>
+
+<script>
+/* ------------------------------------------------------------
+   1. 三套方案 × 浅/深 两套变量。语义名与产品 tokens.css 对齐
+   ------------------------------------------------------------ */
+const T = {
+  current: {
+    name: '现状 0.9.16',
+    light: {
+      bg:'#f8f6f2','bg-list':'#fbf9f6',surface:'#ffffff','surface-2':'#fbf9f6','surface-3':'#f5f3ef',
+      text:'#1a1a1a','text-2':'#5c5c5c','text-3':'#8c8c86','text-4':'#9a9a93',
+      line:'#e8edeb','line-strong':'#d4dcd8','chip-bg':'#f2f0eb','chip-text':'#5c5c5c',
+      accent:'#3e7a72','accent-bright':'#6ba8a0','accent-bg':'#e6f0ed','accent-soft-bg':'#f2f8f6',
+      'accent-text':'#2f6b62','accent-text-2':'#5c7d78','on-accent':'#ffffff',
+      'accent-shadow':'rgba(62,122,114,.24)',danger:'#b0584e','danger-bg':'#fbeeeb',
+      'src-claude':'#d4a574','radius-btn':'6px','radius-card':'8px','radius-window':'12px',
+      'shadow-card':'0 1px 3px rgba(26,31,29,.05)'
+    },
+    dark: {
+      bg:'#1e211f','bg-list':'#191c1a',surface:'#242826','surface-2':'#202422','surface-3':'#2f3431',
+      text:'#edebe6','text-2':'#b5b7b1','text-3':'#8a8d87','text-4':'#767972',
+      line:'#333834','line-strong':'#4b524d','chip-bg':'#2a2e2b','chip-text':'#b5b7b1',
+      accent:'#7fbeb4','accent-bright':'#6ba8a0','accent-bg':'#24332f','accent-soft-bg':'#212e2a',
+      'accent-text':'#9cd3c9','accent-text-2':'#7fa9a1','on-accent':'#10201d',
+      'accent-shadow':'rgba(0,0,0,.34)',danger:'#d98b80','danger-bg':'#362522',
+      'src-claude':'#c9a077','radius-btn':'6px','radius-card':'8px','radius-window':'12px',
+      'shadow-card':'0 1px 3px rgba(0,0,0,.34)'
+    }
+  },
+  indigo: {
+    name: '提案 A · 靛蓝',
+    light: {
+      bg:'#f4f6fb','bg-list':'#f8fafd',surface:'#ffffff','surface-2':'#f7f9fd','surface-3':'#eaeff7',
+      text:'#101827','text-2':'#4a566b','text-3':'#78859a','text-4':'#98a4b6',
+      line:'#e2e8f2','line-strong':'#cdd7e7','chip-bg':'#eef2f8','chip-text':'#4a566b',
+      accent:'#4f46e5','accent-bright':'#6366f1','accent-bg':'#eef0ff','accent-soft-bg':'#f5f6ff',
+      'accent-text':'#3730a3','accent-text-2':'#5b5fc7','on-accent':'#ffffff',
+      'accent-shadow':'rgba(79,70,229,.34)',danger:'#dc2626','danger-bg':'#fef2f2',
+      'src-claude':'#d99a5b','radius-btn':'8px','radius-card':'12px','radius-window':'14px',
+      'shadow-card':'0 1px 2px rgba(16,24,40,.04),0 6px 16px -10px rgba(16,24,40,.20)'
+    },
+    dark: {
+      bg:'#0e131e','bg-list':'#0a0f18',surface:'#171f2e','surface-2':'#131b29','surface-3':'#212c3e',
+      text:'#eef2fa','text-2':'#b2bed0','text-3':'#8493a9','text-4':'#6d7c93',
+      line:'#273247','line-strong':'#3a4760','chip-bg':'#222d40','chip-text':'#b2bed0',
+      accent:'#818cf8','accent-bright':'#a5b4fc','accent-bg':'#232a4a','accent-soft-bg':'#1b2240',
+      'accent-text':'#c7d2fe','accent-text-2':'#97a4f5','on-accent':'#0b1020',
+      'accent-shadow':'rgba(99,102,241,.28)',danger:'#f87171','danger-bg':'#3a2028',
+      'src-claude':'#d6a06b','radius-btn':'8px','radius-card':'12px','radius-window':'14px',
+      'shadow-card':'0 1px 2px rgba(0,0,0,.28),0 6px 16px -10px rgba(0,0,0,.5)'
+    }
+  },
+  teal: {
+    name: '提案 B · 青绿提纯',
+    light: {
+      bg:'#f4f7f9','bg-list':'#f8fbfc',surface:'#ffffff','surface-2':'#f6f9fb','surface-3':'#e8eff2',
+      text:'#0f1d22','text-2':'#455c64','text-3':'#758c93','text-4':'#97a9ae',
+      line:'#dfe9ec','line-strong':'#c8d9dd','chip-bg':'#eaf2f4','chip-text':'#455c64',
+      accent:'#0f766e','accent-bright':'#0d9488','accent-bg':'#e2f5f1','accent-soft-bg':'#f0faf8',
+      'accent-text':'#0b5f58','accent-text-2':'#3c8b83','on-accent':'#ffffff',
+      'accent-shadow':'rgba(15,118,110,.32)',danger:'#d2473c','danger-bg':'#fdf0ee',
+      'src-claude':'#d4a574','radius-btn':'8px','radius-card':'12px','radius-window':'14px',
+      'shadow-card':'0 1px 2px rgba(12,38,42,.05),0 6px 16px -10px rgba(12,38,42,.22)'
+    },
+    dark: {
+      bg:'#0d1519','bg-list':'#0a1114',surface:'#162228','surface-2':'#121d22','surface-3':'#1f2e35',
+      text:'#eaf4f4','text-2':'#aec2c4','text-3':'#7f979a','text-4':'#687f82',
+      line:'#24363b','line-strong':'#365057','chip-bg':'#1e2e34','chip-text':'#aec2c4',
+      accent:'#2dd4bf','accent-bright':'#5eead4','accent-bg':'#123a37','accent-soft-bg':'#0f302d',
+      'accent-text':'#99f6e4','accent-text-2':'#6fbfb3','on-accent':'#062a26',
+      'accent-shadow':'rgba(45,212,191,.24)',danger:'#f48a80','danger-bg':'#3a2323',
+      'src-claude':'#c9a077','radius-btn':'8px','radius-card':'12px','radius-window':'14px',
+      'shadow-card':'0 1px 2px rgba(0,0,0,.3),0 6px 16px -10px rgba(0,0,0,.5)'
+    }
+  }
+};
+
+/* ------------------------------------------------------------
+   2. 图标
+   ------------------------------------------------------------ */
+const svg = (d, extra) => '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" '+(extra||'')+'>'+d+'</svg>';
+const I = {
+  search: svg('<circle cx="6" cy="6" r="4"/><path d="M9.2 9.2L12.5 12.5"/>'),
+  grid: svg('<rect x="2" y="2" width="4" height="4" rx="1"/><rect x="8" y="2" width="4" height="4" rx="1"/><rect x="2" y="8" width="4" height="4" rx="1"/><rect x="8" y="8" width="4" height="4" rx="1"/>'),
+  list: svg('<path d="M2 3.5h10M2 7h10M2 10.5h10"/>'),
+  plus: svg('<path d="M7 2.5v9M2.5 7h9"/>'),
+  down: svg('<path d="M3 5L7 9l4-4"/>'),
+  up: svg('<path d="M7 2v7M4.2 6.2L7 9l2.8-2.8M2.5 11.5h9"/>'),
+  edit: svg('<path d="M9.5 2.8l1.7 1.7M3 11l.7-3 5.6-5.6a1.2 1.2 0 011.7 0l.9.9a1.2 1.2 0 010 1.7L6.3 10.6 3 11z"/>'),
+  tag: svg('<path d="M2.5 6.8V3a.5.5 0 01.5-.5h3.8a1 1 0 01.7.3l4 4a1 1 0 010 1.4l-3.8 3.8a1 1 0 01-1.4 0l-4-4a1 1 0 01-.3-.7z"/><circle cx="5" cy="5" r=".8" fill="currentColor" stroke="none"/>'),
+  dots: svg('<circle cx="3.5" cy="7" r=".9" fill="currentColor" stroke="none"/><circle cx="7" cy="7" r=".9" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7" r=".9" fill="currentColor" stroke="none"/>'),
+  trash: svg('<path d="M2.6 3.8h8.8M5 3.8V2.6h4v1.2M3.6 3.8l.6 7.4h5.6l.6-7.4"/>'),
+  gear: svg('<circle cx="7" cy="7" r="2.2"/><path d="M7 1.5v1.4M7 11.1v1.4M1.5 7h1.4M11.1 7h1.4M3.1 3.1l1 1M9.9 9.9l1 1M10.9 3.1l-1 1M4.1 9.9l-1 1"/>'),
+  star: svg('<path d="M7 2l1.5 3.1 3.4.5-2.5 2.4.6 3.4L7 9.8l-3 1.6.6-3.4-2.5-2.4 3.4-.5L7 2z"/>'),
+  book: svg('<path d="M2.5 3.2c2-1 4-1 4.5-.4.5-.6 2.5-.6 4.5.4v7.6c-2-1-4-1-4.5-.4-.5-.6-2.5-.6-4.5.4V3.2zM7 2.8v7.6"/>'),
+  clock: svg('<circle cx="7" cy="7" r="4.6"/><path d="M7 4.2V7l1.9 1.2"/>'),
+  folder: svg('<path d="M2 4.2h3.6l1.1 1.4H12v5.2a.8.8 0 01-.8.8H2.8a.8.8 0 01-.8-.8V4.2z"/>'),
+  layers: svg('<path d="M7 2.2l5 2.6-5 2.6-5-2.6 5-2.6zM2 7.2l5 2.6 5-2.6M2 9.6l5 2.6 5-2.6"/>'),
+  mark: svg('<path d="M3 3.2h8v7.6H3zM5.2 6.2h3.6M5.2 8.4h2.4"/>'),
+  hide: svg('<path d="M2 7s2-3.2 5-3.2S12 7 12 7s-2 3.2-5 3.2S2 7 2 7z"/><circle cx="7" cy="7" r="1.4"/><path d="M2.5 11.5l9-9"/>'),
+  sort: svg('<path d="M3 4h8M4.5 7h5M6 10h2"/>'),
+  winMin: svg('<path d="M2 6h8"/>'),
+  winMax: svg('<rect x="2.5" y="2.5" width="7" height="7" rx="1"/>'),
+  winClose: svg('<path d="M3 3l6 6M9 3l-6 6"/>'),
+  logo: '<svg viewBox="0 0 20 20" fill="none"><path d="M4 6h12M4 10h12M4 14h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+};
+
+/* ------------------------------------------------------------
+   3. 界面模板
+   ------------------------------------------------------------ */
+function windowMarkup(){
+  const navRow = (icon,label,n,on) =>
+    '<div class="nav-row'+(on?' is-on':'')+'">'+I[icon]+'<span>'+label+'</span><span class="nav-row__n">'+n+'</span></div>';
+  const card = (name,desc,src,color,ico,selected) =>
+    '<div class="card'+(selected?' is-selected':'')+'">'+
+      '<div class="card__check"></div>'+
+      '<div class="card__top"><div class="card__ico">'+I[ico]+'</div><div class="card__name">'+name+'</div></div>'+
+      '<div class="card__desc">'+desc+'</div>'+
+      '<div class="card__foot"><span class="src-dot" style="background:'+color+'"></span><span class="card__src">'+src+'</span>'+
+        '<div class="card__acts"><span class="act" title="编辑来源标记">'+I.tag+'</span><span class="act" title="编辑">'+I.edit+'</span><span class="act act--danger" title="删除">'+I.trash+'</span></div>'+
+      '</div></div>';
+
+  return ''+
+  '<div class="window">'+
+    '<div class="win-tb">'+
+      '<div class="brand"><span class="brand__mark">'+I.logo+'</span>Skill Hub<span class="brand__v">v0.9</span></div>'+
+      '<div class="win-tb__fill"></div>'+
+      '<span class="win-ctl">'+I.winMin+'</span><span class="win-ctl">'+I.winMax+'</span><span class="win-ctl win-ctl--close">'+I.winClose+'</span>'+
+    '</div>'+
+    '<div class="win-ws">'+
+      '<div class="side">'+
+        '<div class="search">'+I.search+'<span>搜索 SKILL</span><span class="kbd">Ctrl K</span></div>'+
+        '<div>'+
+          '<div class="side__group">技能库</div>'+
+          navRow('book','全部技能','42',true)+
+          navRow('star','已收藏','8')+
+          navRow('clock','最近更新','12')+
+          '<div class="side__group" style="margin-top:7px">浏览</div>'+
+          navRow('layers','来源','6')+
+          navRow('folder','分类','7')+
+          navRow('mark','标记','5')+
+          '<div class="side__group" style="margin-top:7px">其他</div>'+
+          navRow('hide','隐藏的技能','3')+
+        '</div>'+
+        '<div class="side__fill"></div>'+
+        '<button class="cta btn--primary">'+I.plus+'<span>新建 SKILL</span></button>'+
+        '<div class="sync"><i></i><span>已同步 6 个目录 · 刚刚</span></div>'+
+        '<div class="side__link">'+I.trash+'<span>回收站</span></div>'+
+        '<div class="side__link">'+I.gear+'<span>设置与偏好</span></div>'+
+      '</div>'+
+      '<div class="main">'+
+        '<div class="main__head">'+
+          '<div><div class="main__title">全部技能 <span class="count">42</span></div><div class="main__sub">来自 6 个来源 · 按分类浏览</div></div>'+
+          '<div class="actions">'+
+            '<span class="btn btn--secondary">'+I.sort+'最近更新'+I.down+'</span>'+
+            '<span class="seg"><span class="is-on">'+I.grid+'</span><span>'+I.list+'</span></span>'+
+            '<span class="btn btn--secondary">'+I.up+'导入 SKILL</span>'+
+            '<span class="btn btn--primary">'+I.up+'导出所选</span>'+
+          '</div>'+
+        '</div>'+
+        '<div class="filters">'+
+          '<span class="chip is-on">全部</span><span class="chip">已收藏</span><span class="chip">最近 7 天</span><span class="chip">可导出</span>'+
+          '<span class="filters__count">共 42 个 SKILL</span>'+
+        '</div>'+
+        '<div class="cards">'+
+          card('code-review','自动审查 PR 变更并生成结构化建议','Claude Code','var(--src-claude)','mark',false)+
+          card('pdf-to-markdown','把 PDF / 扫描件还原成可编辑 Markdown','WorkBuddy','var(--accent)','book',true)+
+          card('agent-browser','驱动浏览器完成表单填写与信息采集','Codex','#8b9dc3','grid',false)+
+          card('release-notes','从提交记录自动生成发版说明','自定义','#a9aab0','tag',false)+
+        '</div>'+
+        '<div class="selbar">'+
+          '<span class="selbar__n">已选 2 个 SKILL</span><span class="selbar__fill"></span>'+
+          '<span class="selbar__clear">清空选择</span>'+
+          '<span class="btn btn--primary">'+I.up+'导出打包</span>'+
+          '<span class="btn btn--danger">'+I.trash+'批量删除</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function specimenMarkup(){
+  return ''+
+  '<div class="specimen">'+
+    '<h3>组件样本 · 按钮阶梯与状态</h3>'+
+    '<p class="js-spec-note"></p>'+
+    '<div class="spec-row"><span class="spec-label">按钮阶梯</span>'+
+      '<span class="btn btn--primary">'+I.plus+'新建 SKILL</span>'+
+      '<span class="btn btn--secondary">'+I.up+'导入 SKILL</span>'+
+      '<span class="btn btn--ghost">取消</span>'+
+      '<span class="btn btn--danger">'+I.trash+'删除</span>'+
+      '<span class="btn btn--secondary btn--disabled">导出所选</span>'+
+    '</div>'+
+    '<div class="spec-row"><span class="spec-label">卡片操作项</span>'+
+      '<span class="act" title="编辑来源标记">'+I.tag+'</span>'+
+      '<span class="act" title="编辑">'+I.edit+'</span>'+
+      '<span class="act" title="更多">'+I.dots+'</span>'+
+      '<span class="act act--danger" title="删除">'+I.trash+'</span>'+
+      '<span class="js-act-note" style="font-size:9.5px;color:var(--text-3)"></span>'+
+    '</div>'+
+    '<div class="spec-row"><span class="spec-label">表单与选择</span>'+
+      '<span class="field">skill-name.md</span>'+
+      '<span class="field field--placeholder is-focus">搜索或输入…</span>'+
+      '<span class="field field--placeholder">选择 Agent'+I.down+'</span>'+
+      '<span class="chip is-on">全部</span><span class="chip">已收藏</span>'+
+      '<span class="toggle"></span><span class="toggle toggle--off"></span>'+
+    '</div>'+
+    '<div class="spec-row"><span class="spec-label">核心色板</span><div class="swatches" id="sw"></div></div>'+
+  '</div>';
+}
+
+/* ------------------------------------------------------------
+   4. 渲染 + 方案切换
+   ------------------------------------------------------------ */
+const SWATCH_KEYS = ['bg','surface','surface-2','surface-3','text','text-2','line','accent','accent-bg','danger'];
+const TABLE_ROWS = [
+  ['窗口 / 侧栏底','bg'],['卡片 / 内容区','surface'],['次级面 / 输入框','surface-2'],
+  ['三级面 / 图标底','surface-3'],['主文字','text'],['次文字','text-2'],
+  ['分隔线','line'],['强调色 / 主按钮','accent'],['强调浅底 / 选中','accent-bg'],['危险色','danger']
+];
+const VARIANTS = ['current','indigo','teal'];
+
+function apply(v){
+  const stage = document.getElementById('stage');
+  stage.dataset.variant = v;
+  document.querySelectorAll('#switcher button').forEach(b=>b.classList.toggle('is-on', b.dataset.v === v));
+  document.getElementById('currentName').textContent = T[v].name;
+
+  document.querySelectorAll('.preview').forEach(p=>{
+    const scheme = p.dataset.scheme;
+    const set = T[v][scheme];
+    Object.keys(set).forEach(k=>p.style.setProperty('--'+k, set[k]));
+    if(!p.querySelector('.window')){
+      p.querySelector('.preview__body').innerHTML = windowMarkup() + specimenMarkup();
+    }
+    const sw = p.querySelector('#sw');
+    if(sw){
+      sw.innerHTML = SWATCH_KEYS.map(k=>
+        '<div class="sw"><i style="background:'+set[k]+'"></i><span>'+set[k].toUpperCase()+'</span></div>'
+      ).join('');
+    }
+    const note = p.querySelector('.js-spec-note');
+    const actNote = p.querySelector('.js-act-note');
+    if(note) note.textContent = v === 'current'
+      ? '现状：主按钮与次要按钮视觉重量接近，卡片操作项默认隐藏，危险动作只是浅色文字。'
+      : 'Primary 承担主操作（新建 / 导出打包）；Secondary 承担常规动作；操作项常态可见，危险动作常态带底色。';
+    if(actNote) actNote.textContent = v === 'current'
+      ? '默认隐藏 · hover 才出现'
+      : '常态可见 · hover 转强调色 / 危险色';
+  });
+  renderTable(v);
+}
+
+function renderTable(v){
+  const t = document.getElementById('tokenTable');
+  let html = '<thead><tr><th>语义变量</th>';
+  VARIANTS.forEach(k=>{
+    html += '<th class="'+(k===v?'is-on':'')+'">'+T[k].name+(k===v?' · 当前':'')+'</th>';
+  });
+  html += '</tr></thead><tbody>';
+  TABLE_ROWS.forEach(([label,key])=>{
+    html += '<tr><td>'+label+'<div style="font-size:9px;color:#98a2b2;font-weight:400">--'+key+'</div></td>';
+    VARIANTS.forEach(k=>{
+      const l = T[k].light[key], d = T[k].dark[key];
+      html += '<td class="'+(k===v?'is-on':'')+'">'+
+        '<div class="pair"><i style="background:'+l+'"></i><em>浅</em><span class="cellhex">'+l+'</span></div>'+
+        '<div class="pair"><i style="background:'+d+'"></i><em>深</em><span class="cellhex">'+d+'</span></div>'+
+      '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  t.innerHTML = html;
+}
+
+document.getElementById('switcher').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-v]');
+  if(b){
+    apply(b.dataset.v);
+    try{ history.replaceState(null,'','?v='+b.dataset.v); }catch(_){}
+  }
+});
+// 支持 ?v=current|indigo|teal，方便直接打开某一版对照
+const initial = new URLSearchParams(location.search).get('v');
+apply(VARIANTS.indexOf(initial) >= 0 ? initial : 'teal');
+</script>
+</body>
+</html>
