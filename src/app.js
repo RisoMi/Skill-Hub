@@ -473,6 +473,7 @@
           SH.dialogs.openSettings();
         },
         newcat: () => SH.dialogs.openCategoryEditor(),
+        categories: () => SH.dialogs.openCategoryManager(),
         editsrc: () => {
           const target =
             store.state.sources.find((s) => !s.builtin) || store.state.sources[0];

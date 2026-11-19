@@ -38,7 +38,7 @@
         ${
           editable
             ? `<button class="nav-row__edit" data-action="edit-${kind}" data-id="${esc(id)}"
-                       title="管理这个${kind === "source" ? "来源" : "标记"}"
+                       title="${kind === "source" ? "管理来源" : kind === "category" ? "管理分类" : "管理标记"}"
                        aria-label="管理 ${esc(name)}">${I.svg("more", 12)}</button>`
             : ""
         }
@@ -120,15 +120,17 @@
       .join("");
 
     return `
-      <div class="nav-panel__head">
+      <div class="nav-panel__head nav-panel__head--tools">
+        <button class="nav-label__action nav-label__action--strong" data-action="manage-categories"
+                title="新增 / 改名 / 换色 / 删除分类">${I.svg("gear", 12)} 管理分类</button>
+        <button class="nav-label__action" data-action="new-category">＋ 新建分类</button>
         ${
           ui.categoryId !== "all"
             ? '<button class="nav-label__action" data-action="clear-category">清除筛选</button>'
             : ""
         }
-        <button class="nav-label__action" data-action="new-category">＋ 新建分类</button>
       </div>
-      <div class="nav-list">${rows}</div>`;
+      <div class="nav-list nav-list--managed">${rows}</div>`;
   }
 
   function markPanel(ui) {
@@ -305,6 +307,11 @@
       if (action === "clear-source") {
         stop();
         store.setSource("all");
+        return;
+      }
+      if (action === "manage-categories") {
+        stop();
+        SH.dialogs.openCategoryManager();
         return;
       }
       if (action === "new-category") {

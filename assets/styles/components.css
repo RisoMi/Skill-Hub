@@ -2157,3 +2157,35 @@
 .skill-row.is-active .skill-row__name {
   color: var(--accent-text);
 }
+
+/* ---------- 分类面板：管理入口常驻可见 ---------- */
+.nav-panel__head--tools {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 5px 9px;
+}
+
+.nav-label__action--strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.nav-label__action--strong:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--chip-bg);
+}
+
+.nav-label__action--strong svg { width: 11px; height: 11px; }
+
+.nav-list--managed .nav-row__edit {
+  opacity: 1;
+  pointer-events: auto;
+}

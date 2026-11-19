@@ -1661,7 +1661,12 @@
     }
   }
 
-  function openCategoryEditor(categoryId) {
+  function openCategoryEditor(categoryId, afterClose) {
+    function closeEditor() {
+      close();
+      if (typeof afterClose === "function") afterClose();
+    }
+
     const editing = categoryId ? store.getCategory(categoryId) : null;
     const state = {
       name: editing ? editing.name : "",
@@ -1738,7 +1743,7 @@
         state.error = res.reason;
         return refresh();
       }
-      close();
+      closeEditor();
       SH.toast(editing ? `已更新分类「${name}」` : `已创建分类「${name}」`, "ok");
     }
 
@@ -1748,7 +1753,7 @@
         state.error = res.reason;
         return refresh();
       }
-      close();
+      closeEditor();
       SH.toast(`已删除分类，「${res.moved} 个 SKILL」移到「${res.fallbackName}」`, "ok");
     }
 
@@ -1757,7 +1762,7 @@
       if (!el) return;
       const act = el.dataset.act;
 
-      if (act === "close") return close();
+      if (act === "close") return closeEditor();
       if (act === "color") {
         state.color = el.dataset.value;
         return refresh();
@@ -1781,6 +1786,109 @@
     }
   }
 
+
+
+  /**
+   * 分类管理总入口：新增 / 改名 / 换色 / 删除，一屏可见。
+   * 删除用行内两段式确认，必须再点一次「确认删除」才生效。
+   */
+  function openCategoryManager() {
+    let pendingDelete = null;
+
+    function listHtml() {
+      const counts = store.categoryCounts();
+      const rows = store.state.categories
+        .map((cat) => {
+          const n = counts[cat.id] || 0;
+          const acting = pendingDelete === cat.id;
+          return `
+          <div class="cat-manage__row">
+            <span class="dot" style="background:${esc(store.categoryColor(cat))}"></span>
+            <span class="cat-manage__name" title="${esc(cat.name)}">${esc(cat.name)}</span>
+            <span class="cat-manage__count">${n} 个 SKILL</span>
+            ${
+              acting
+                ? `<button class="cat-manage__btn cat-manage__btn--danger"
+                            data-act="confirm-remove" data-id="${esc(cat.id)}">确认删除</button>
+                   <button class="cat-manage__btn" data-act="cancel-remove">取消</button>`
+                : `<button class="cat-manage__btn" data-act="edit" data-id="${esc(cat.id)}"
+                            title="改名 / 换色">编辑</button>
+                   <button class="cat-manage__btn cat-manage__btn--danger" data-act="remove" data-id="${esc(cat.id)}"
+                            title="删除分类">删除</button>`
+            }
+          </div>`;
+        })
+        .join("");
+      return `<div class="cat-manage__list">${rows}</div>`;
+    }
+
+    function render() {
+      return `
+        <div class="dialog dialog--sm" role="dialog" aria-modal="true" aria-label="分类管理">
+          <div class="dialog__head">
+            <div class="dialog__title-group">
+              <h2 class="dialog__title">分类管理</h2>
+              <p class="dialog__subtitle" id="catManageSub">新增、改名、换色、删除 · 共 ${store.state.categories.length} 个分类</p>
+            </div>
+            <button class="dialog__close" data-act="close" aria-label="关闭">${I.svg("close", 15)}</button>
+          </div>
+          <div class="hline" style="height:1px;background:var(--line)"></div>
+          <div class="dialog__body">
+            <p class="cat-manage__hint">点侧栏分类行可筛选 SKILL。删除分类时，其中的 SKILL 会移到「其他」，不会被删除。</p>
+            <div id="catManageList">${listHtml()}</div>
+          </div>
+          <div class="dialog__foot">
+            <div class="dialog__foot-hint"></div>
+            <div class="dialog__btns">
+              <button class="btn btn--outline" data-act="close">关闭</button>
+              <button class="btn btn--primary" data-act="create">${I.svg("plus", 12)} 新建分类</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function refreshList() {
+      const box = root.querySelector("#catManageList");
+      if (box) box.innerHTML = listHtml();
+      const sub = root.querySelector("#catManageSub");
+      if (sub) sub.textContent = `新增、改名、换色、删除 · 共 ${store.state.categories.length} 个分类`;
+    }
+
+    function reopen() {
+      openCategoryManager();
+    }
+
+    function handler(event) {
+      const el = event.target.closest("[data-act]");
+      if (!el) return;
+      const act = el.dataset.act;
+      const id = el.dataset.id;
+
+      if (act === "close") return close();
+      if (act === "create") return openCategoryEditor(null, reopen);
+      if (act === "edit") return openCategoryEditor(id, reopen);
+      if (act === "remove") {
+        pendingDelete = id;
+        return refreshList();
+      }
+      if (act === "cancel-remove") {
+        pendingDelete = null;
+        return refreshList();
+      }
+      if (act === "confirm-remove") {
+        const res = store.removeCategory(id);
+        pendingDelete = null;
+        if (!res.ok) {
+          SH.toast(res.reason, "error");
+          return refreshList();
+        }
+        refreshList();
+        return SH.toast(`已删除分类，「${res.moved} 个 SKILL」移到「${res.fallbackName}」`, "ok");
+      }
+    }
+
+    mount(render, handler);
+  }
   function openSourceEditor(sourceId) {
     const src = store.getSource(sourceId);
     if (!src) return;
@@ -3010,6 +3118,7 @@
     openMarkEditor,
     openMarkPicker,
     openCategoryEditor,
+    openCategoryManager,
     openSourceEditor,
     openMetaEditor,
     openSettings,
