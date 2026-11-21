@@ -409,3 +409,100 @@ body.is-editing-skill {
   font-size: 10.5px;
   color: var(--text-4);
 }
+
+/* ---------------- 语法高亮层 ---------------- */
+.se-code {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.se-code--split {
+  flex: 1 1 50%;
+  border-right: 1px solid var(--line);
+}
+
+.se-code__hl {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 20px 24px;
+  border: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  pointer-events: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.75;
+  tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.se-code__hl code {
+  font: inherit;
+  color: inherit;
+}
+
+.se-textarea--hl {
+  box-sizing: border-box;
+  width: 100%;
+  z-index: 2;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--text);
+  background: transparent;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.se-textarea--hl::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.se-textarea--split {
+  flex: 1 1 auto;
+  border-right: 0;
+}
+
+.se-code__lang {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  z-index: 3;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-btn);
+  background: var(--surface-2);
+  color: var(--text-4);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 15px;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* token 配色：全部走语义变量，随 5 套配色 × 浅深自动适配 */
+.hl-key,
+.hl-attr { color: var(--accent); font-weight: 600; }
+.hl-string { color: var(--warn-text); }
+.hl-num,
+.hl-bool { color: var(--signal); }
+.hl-comment { color: var(--text-4); font-style: italic; }
+.hl-tag { color: var(--accent-bright); font-weight: 600; }
+.hl-keyword { color: var(--danger); font-weight: 600; }
+.hl-func { color: var(--accent-text); }
+.hl-punc { color: var(--text-3); }
+.hl-heading { color: var(--accent); font-weight: 700; }
+.hl-quote { color: var(--text-3); font-style: italic; }
+.hl-strong { color: var(--text); font-weight: 700; }
+.hl-em { color: var(--text-2); font-style: italic; }
+.hl-link { color: var(--accent-bright); text-decoration: underline; }
+.hl-code { color: var(--warn-text); background: var(--surface-2); }

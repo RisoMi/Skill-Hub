@@ -116,6 +116,23 @@
       .join("");
   }
 
+  /**
+   * 透明 textarea 叠在高亮 pre 上：pre 负责颜色，textarea 负责输入与光标。
+   * 两层字体 / 行高 / padding 必须完全一致（见 editor.css）。
+   */
+  function codeHtml(file, text, extraClass, split) {
+    const lang = SH.hl.detect(file);
+    const cls = ["se-textarea", "se-textarea--hl", extraClass].filter(Boolean).join(" ");
+    return `
+      <div class="se-code${split ? " se-code--split" : ""}" data-lang="${esc(lang)}">
+        <pre class="se-code__hl" aria-hidden="true"><code>${SH.hl.render(text, lang)}</code></pre>
+        <textarea id="seTextarea" class="${cls}" spellcheck="false"
+                  autocomplete="off" autocorrect="off" autocapitalize="off"
+                  placeholder="在这里编辑 ${esc(file)}">${esc(text)}</textarea>
+        <span class="se-code__lang">${esc(SH.hl.label(lang))}</span>
+      </div>`;
+  }
+
   function mainHtml(skill, file, text) {
     if (!file) return `<div class="se-placeholder">左侧选一个文件开始编辑</div>`;
     const kind = fileKind(file);
@@ -141,17 +158,14 @@
     if (kind === "md" && state.split) {
       return `
         <div class="se-split">
-          <textarea id="seTextarea" class="se-textarea se-textarea--split" spellcheck="false"
-                    placeholder="在这里编辑 ${esc(file)}">${esc(text)}</textarea>
+          ${codeHtml(file, text, "se-textarea--split", true)}
           <div class="se-split__preview md" id="sePreview">${SH.md.render(
             SH.md.splitFrontmatter(text).body
           )}</div>
         </div>`;
     }
 
-    return `
-      <textarea id="seTextarea" class="se-textarea" spellcheck="false"
-                placeholder="在这里编辑 ${esc(file)}">${esc(text)}</textarea>`;
+    return codeHtml(file, text);
   }
 
   function render() {
@@ -246,7 +260,10 @@
       if (input) input.focus();
     } else if (kind !== "image") {
       const area = root.querySelector("#seTextarea");
-      if (area) area.focus();
+      if (area) {
+        area.addEventListener("scroll", syncHighlight, { passive: true });
+        area.focus();
+      }
     }
   }
 
@@ -266,6 +283,26 @@
     }
     const box = root.querySelector(".se-files__list");
     if (box) box.innerHTML = fileListHtml(skill);
+  }
+
+  /** 只换底层高亮 HTML，textarea 节点不动 => 光标与焦点不丢 */
+  function updateHighlight(area) {
+    if (!area || !state.file) return;
+    const wrap = area.parentElement;
+    const code = wrap && wrap.querySelector(".se-code__hl code");
+    if (!code) return;
+    code.innerHTML = SH.hl.render(area.value, SH.hl.detect(state.file));
+    syncHighlight();
+  }
+
+  function syncHighlight() {
+    const area = root && root.querySelector("#seTextarea");
+    if (!area || !area.parentElement) return;
+    const pre = area.parentElement.querySelector(".se-code__hl");
+    if (pre) {
+      pre.scrollTop = area.scrollTop;
+      pre.scrollLeft = area.scrollLeft;
+    }
   }
 
   /* ---------------- 行为 ---------------- */
@@ -307,6 +344,7 @@
       const pretty = JSON.stringify(JSON.parse(area.value), null, 2) + "\n";
       area.value = pretty;
       state.dirty[state.file] = pretty;
+      updateHighlight(area);
       state.error = "";
       refreshStatus();
       SH.toast("已格式化，记得保存", "ok");
@@ -450,6 +488,7 @@
     if (!area || area.id !== "seTextarea" || !state.file) return;
 
     state.dirty[state.file] = area.value;
+    updateHighlight(area);
 
     // MD 分栏时实时刷新右侧预览
     const preview = root.querySelector("#sePreview");
@@ -460,9 +499,20 @@
   }
 
   function onKeydownInRoot(event) {
-    if (event.target && event.target.id === "seNewFile" && event.key === "Enter") {
+    const t = event.target;
+    if (t && t.id === "seNewFile" && event.key === "Enter") {
       event.preventDefault();
       createFile();
+      return;
+    }
+    // 代码编辑区里 Tab 缩进，不跳焦点
+    if (t && t.id === "seTextarea" && event.key === "Tab") {
+      event.preventDefault();
+      const s = t.selectionStart;
+      const e = t.selectionEnd;
+      t.value = t.value.slice(0, s) + "  " + t.value.slice(e);
+      t.selectionStart = t.selectionEnd = s + 2;
+      t.dispatchEvent(new Event("input", { bubbles: true }));
     }
   }
 
