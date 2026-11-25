@@ -39,6 +39,8 @@ struct ScannedSkill {
     dir: String,
     content: String,
     files: Vec<SkillFile>,
+    /// 技能目录下的子目录（相对路径），让编辑器能显示空文件夹
+    dirs: Vec<String>,
     updated_at: u64,
     meta_file: Option<String>,
     meta: Option<serde_json::Value>,
@@ -279,6 +281,19 @@ fn scan_roots(roots: Vec<String>) -> Vec<ScanRoot> {
                 }
                 files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
+                // 收集技能目录下的子目录（只取相对路径，排除隐藏目录）
+                let mut dirs: Vec<String> = Vec::new();
+                if let Ok(read_dir) = fs::read_dir(&dir) {
+                    for item in read_dir.filter_map(|e| e.ok()) {
+                        let p = item.path();
+                        if !p.is_dir() { continue; }
+                        let dname = item.file_name().to_string_lossy().to_string();
+                        if dname.starts_with('.') { continue; }
+                        dirs.push(dname);
+                    }
+                }
+                dirs.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+
                 let (meta_file, meta) = match read_meta(&dir) {
                     Some((file, value)) => (Some(file), Some(value)),
                     None => (None, None),
@@ -305,6 +320,7 @@ fn scan_roots(roots: Vec<String>) -> Vec<ScanRoot> {
                     dir: dir.to_string_lossy().to_string(),
                     content,
                     files,
+                    dirs,
                     updated_at,
                     meta_file,
                     meta,
@@ -623,6 +639,21 @@ fn delete_skill_file(dir: String, name: String) -> Result<(), String> {
     fs::remove_file(&path).map_err(|e| format!("删除失败：{e}"))
 }
 
+/// 在技能目录下创建子目录（可多级），用于编辑器的「新建文件夹」
+#[tauri::command]
+fn create_skill_dir(root: String, skill: String, dir: String) -> Result<String, String> {
+    let root = expand_home(&root);
+    if !is_safe_relative(&skill) {
+        return Err(format!("非法的技能名：{skill}"));
+    }
+    if !is_safe_relative(&dir) || dir.ends_with('/') || dir.ends_with('\\') {
+        return Err(format!("非法的文件夹名：{dir}"));
+    }
+    let target = PathBuf::from(&root).join(&skill).join(&dir);
+    fs::create_dir_all(&target).map_err(|e| format!("创建文件夹失败：{e}"))?;
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[tauri::command]
 fn window_action(window: tauri::Window, action: String) -> Result<(), String> {
     match action.as_str() {
@@ -813,6 +844,7 @@ pub fn run() {
             write_skill,
             remove_skill,
             delete_skill_file,
+            create_skill_dir,
             read_file_base64,
             list_trash,
             restore_trash,

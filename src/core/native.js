@@ -63,6 +63,18 @@
       return invoke("remove_skill", { dir });
     },
 
+    /** 在技能目录下创建子文件夹（支持多级相对路径） */
+    async createSkillDir(root, skill, dir) {
+      if (!isNative) return false;
+      try {
+        await invoke("create_skill_dir", { root, skill, dir });
+        return true;
+      } catch (err) {
+        console.warn("[native] create_skill_dir 失败", err);
+        return false;
+      }
+    },
+
     /** 无边框窗口控制：优先自写命令，失败时回退 Tauri 官方 window API */
     async windowAction(action) {
       if (!isNative) return false;
@@ -168,6 +180,7 @@
           content: f.content,
           size: f.size,
         })),
+        dirs: Array.isArray(scanned.dirs) ? scanned.dirs.slice() : [],
         meta:
           metaFile && metaData
             ? {

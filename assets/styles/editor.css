@@ -516,3 +516,71 @@ body.is-editing-skill {
 .hl-em { color: var(--text-2); font-style: italic; }
 .hl-link { color: var(--accent-bright); text-decoration: underline; }
 .hl-code { color: var(--warn-text); background: var(--surface-2); }
+
+/* ---------------- 文件夹分组 ---------------- */
+.se-files__tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.se-files__tools .se-icon { width: 24px; height: 24px; }
+
+.se-dir-group { margin: 2px 0; }
+
+.se-dir-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.se-dir-toggle {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-4);
+}
+
+.se-dir-toggle:hover { color: var(--accent); }
+
+.se-dir__chev {
+  display: inline-flex;
+  transition: transform 0.15s var(--ease);
+}
+
+.se-dir__chev.is-collapsed { transform: rotate(-90deg); }
+
+.se-dir-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: var(--radius-btn);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  text-align: left;
+}
+
+.se-dir-name:hover { background: var(--surface); }
+
+.se-dir-name svg { flex: 0 0 12px; color: var(--warn-text); }
+
+.se-dir__count {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  color: var(--text-4);
+}
+
+.se-dir__children {
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+  margin-left: 12px;
+}

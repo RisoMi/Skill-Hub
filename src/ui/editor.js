@@ -25,6 +25,10 @@
     split: true,
     dirty: {},
     newMode: false,
+    /** newMode: "file" | "dir"，决定输入框语义 */
+    createKind: "file",
+    /** 折叠的目录名集合 */
+    collapsedDirs: {},
     error: "",
   };
 
@@ -91,30 +95,68 @@
 
   /* ---------------- 渲染 ---------------- */
 
-  function fileListHtml(skill) {
-    const files = filesOf(skill);
-    if (!files.length) return `<div class="se-empty">这个技能还没有文件</div>`;
-    return files
-      .map((f) => {
-        const kind = fileKind(f.name);
-        const icon = kind === "image" ? "eye" : kind === "md" ? "doc" : "file";
-        return `
+  function fileRowHtml(f) {
+    const kind = fileKind(f.name);
+    const icon = kind === "image" ? "eye" : kind === "md" ? "doc" : "file";
+    const short = f.name.indexOf("/") >= 0 ? f.name.slice(f.name.lastIndexOf("/") + 1) : f.name;
+    return `
         <div class="se-file-row">
           <button class="se-file ${f.name === state.file ? "is-active" : ""}"
-                  data-act="file" data-file="${esc(f.name)}">
+                  data-act="file" data-file="${esc(f.name)}" title="${esc(f.name)}">
             ${SH.icons.svg(icon, 12)}
-            <span class="se-file__name truncate">${esc(f.name)}</span>
+            <span class="se-file__name truncate">${esc(short)}</span>
             ${isDirty(f.name) ? `<span class="se-file__dot" title="未保存"></span>` : ""}
           </button>
-          ${
-            /^SKILL\.md$/i.test(f.name)
-              ? ""
-              : `<button class="se-file__del" data-act="delete" data-file="${esc(f.name)}"
-                        title="删除 ${esc(f.name)}">${SH.icons.svg("trash", 12)}</button>`
-          }
+          ${/^SKILL\.md$/i.test(f.name) ? "" :
+            `<button class="se-file__del" data-act="delete" data-file="${esc(f.name)}"
+                      title="删除 ${esc(f.name)}">${SH.icons.svg("trash", 12)}</button>`}
         </div>`;
-      })
-      .join("");
+  }
+
+  /** 文件列表：顶层文件 + 按目录分组（目录可折叠，空目录也显示） */
+  function fileListHtml(skill) {
+    const files = filesOf(skill);
+    const dirs = Array.isArray(skill.dirs) ? skill.dirs.slice() : [];
+    // 从文件名推导目录，连多级路径的中间层一起建出来
+    files.forEach((f) => {
+      const parts = String(f.name).split("/");
+      for (let i = 0; i < parts.length - 1; i++) {
+        const d = parts.slice(0, i + 1).join("/");
+        if (dirs.indexOf(d) < 0) dirs.push(d);
+      }
+    });
+    dirs.sort();
+
+    if (!files.length && !dirs.length) {
+      return `<div class="se-empty">这个技能还没有文件</div>`;
+    }
+
+    const top = files.filter((f) => f.name.indexOf("/") < 0);
+    let html = top.map(fileRowHtml).join("");
+
+    dirs.forEach((d) => {
+      const inDir = files.filter((f) => f.name.indexOf(d + "/") === 0);
+      const childFiles = inDir.filter((f) => f.name.slice(d.length + 1).indexOf("/") < 0);
+      const collapsed = !!state.collapsedDirs[d];
+      html += `
+        <div class="se-dir-group">
+          <div class="se-dir-row">
+            <button class="se-dir-toggle" data-act="toggle-dir" data-dir="${esc(d)}"
+                    title="${collapsed ? "展开" : "折叠"} ${esc(d)}">
+              <span class="se-dir__chev ${collapsed ? "is-collapsed" : ""}">${SH.icons.svg("chevron", 11)}</span>
+            </button>
+            <button class="se-dir-name" data-act="toggle-dir" data-dir="${esc(d)}"
+                    title="${esc(d)}">${SH.icons.svg("folder", 12)}
+              <span class="truncate">${esc(d)}</span>
+              <span class="se-dir__count">${inDir.length}</span>
+            </button>
+            <button class="se-file__del" data-act="delete-dir" data-dir="${esc(d)}"
+                    title="删除文件夹 ${esc(d)}">${SH.icons.svg("trash", 12)}</button>
+          </div>
+          ${collapsed ? "" : `<div class="se-dir__children">${childFiles.map(fileRowHtml).join("")}</div>`}
+        </div>`;
+    });
+    return html;
   }
 
   /**
@@ -222,14 +264,20 @@
           <aside class="se-files">
             <div class="se-files__head">
               <span>文件 ${filesOf(skill).length}</span>
-              <button class="se-icon" data-act="new" title="新建文件">
-                ${SH.icons.svg("plus", 13)}
-              </button>
+              <span class="se-files__tools">
+                <button class="se-icon" data-act="new" data-kind="file" title="新建文件">
+                  ${SH.icons.svg("file", 13)}
+                </button>
+                <button class="se-icon" data-act="new" data-kind="dir" title="新建文件夹">
+                  ${SH.icons.svg("folder", 13)}
+                </button>
+              </span>
             </div>
             ${
               state.newMode
                 ? `<div class="se-new">
-                     <input id="seNewFile" class="se-new__input" placeholder="references/notes.md"
+                     <input id="seNewFile" class="se-new__input"
+                            placeholder="${state.createKind === "dir" ? "references/drafts" : "references/notes.md"}"
                             autocomplete="off" spellcheck="false">
                      <button class="se-btn se-btn--tiny" data-act="create">创建</button>
                      <button class="se-icon" data-act="cancel-new" title="取消">
@@ -374,14 +422,31 @@
 
   async function createFile() {
     const input = root.querySelector("#seNewFile");
-    const name = (input ? input.value : "").trim().replace(/\\/g, "/");
+    const raw = (input ? input.value : "").trim().replace(/\\/g, "/");
+    const isDir = state.createKind === "dir";
+    const name = isDir ? raw.replace(/^\/+|\/+$/g, "") : raw;
     if (!name) {
-      state.error = "文件名不能为空";
+      state.error = isDir ? "文件夹名不能为空" : "文件名不能为空";
       render();
       return;
     }
     const skill = currentSkill();
     if (!skill) return;
+
+    if (isDir) {
+      const res = await store.createSkillDir(skill.id, name);
+      if (!res.ok) {
+        state.error = res.reason || "创建失败";
+        render();
+        return;
+      }
+      state.newMode = false;
+      state.error = "";
+      render();
+      SH.toast(res.persisted ? `已创建文件夹 ${name}` : `已创建 ${name}（未写入磁盘：${res.reason || "请用桌面版"}）`,
+        res.persisted ? "ok" : "warn");
+      return;
+    }
 
     const res = await store.saveSkillFile(skill.id, name, "");
     if (!res.ok) {
@@ -457,8 +522,36 @@
 
     if (act === "new") {
       state.newMode = true;
+      state.createKind = el.dataset.kind === "dir" ? "dir" : "file";
       state.error = "";
-      return render();
+      render();
+      const input = root.querySelector("#seNewFile");
+      if (input) input.focus();
+      return;
+    }
+    if (act === "toggle-dir") {
+      const d = el.dataset.dir;
+      if (d) {
+        state.collapsedDirs[d] = !state.collapsedDirs[d];
+        const box = root.querySelector(".se-files__list");
+        if (box) box.innerHTML = fileListHtml(currentSkill());
+      }
+      return;
+    }
+    if (act === "delete-dir") {
+      const d = el.dataset.dir;
+      if (!d) return;
+      const res = store.removeSkillDir(state.skillId, d);
+      if (!res.ok) {
+        state.error = res.reason;
+        const hint = root.querySelector(".se-foot__hint");
+        if (hint) { hint.textContent = res.reason; hint.classList.add("is-error"); }
+        return;
+      }
+      const box = root.querySelector(".se-files__list");
+      if (box) box.innerHTML = fileListHtml(currentSkill());
+      SH.toast(`已删除文件夹「${d}」`, "ok");
+      return;
     }
     if (act === "cancel-new") {
       state.newMode = false;
@@ -542,6 +635,8 @@
     state.dirty = {};
     state.error = "";
     state.newMode = false;
+    state.createKind = "file";
+    state.collapsedDirs = {};
     state.split = true;
 
     const files = filesOf(skill);
@@ -566,6 +661,8 @@
     state.file = null;
     state.dirty = {};
     state.newMode = false;
+    state.createKind = "file";
+    state.collapsedDirs = {};
     state.error = "";
     const workspace = document.querySelector(".workspace");
     if (workspace) workspace.classList.remove("is-editing-embedded");

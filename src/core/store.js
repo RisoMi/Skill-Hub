@@ -564,6 +564,12 @@
         const prev = prevByKey.get(key);
         skill.id = prev && prev.id ? prev.id : uid("sk");
         if (prev && prev.favorite) skill.favorite = true;
+        // 沿用上次的空目录记录；磁盘上真实存在的目录由扫描结果提供
+        if (prev && Array.isArray(prev.dirs) && prev.dirs.length) {
+          const merged = skill.dirs.slice();
+          prev.dirs.forEach((d) => { if (merged.indexOf(d) < 0) merged.push(d); });
+          skill.dirs = merged;
+        }
 
         nextSkills.push(skill);
       });
@@ -1299,6 +1305,60 @@
   }
 
   /**
+   * 在技能目录下新建子文件夹（支持多级相对路径，如 references/drafts）。
+   * 内存里记一条 dirs，磁盘交给原生命令；浏览器预览只改内存。
+   */
+  async function createSkillDir(skillId, dirName) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+    const dir = String(dirName || "").trim().replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    if (!dir) return { ok: false, reason: "文件夹名不能为空" };
+    if (dir.split("/").includes("..")) return { ok: false, reason: "文件夹名不合法" };
+    if (dir.length > 200) return { ok: false, reason: "文件夹名过长" };
+
+    skill.dirs = Array.isArray(skill.dirs) ? skill.dirs : [];
+    if (skill.dirs.indexOf(dir) >= 0) return { ok: false, reason: "文件夹已存在" };
+    skill.dirs.push(dir);
+    skill.dirs.sort();
+    skill.updatedAt = Date.now();
+    persist();
+    emit("dir-created");
+
+    const native = SH.native;
+    const src = getSource(skill.sourceId);
+    const root = (src && src.nativePath) || null;
+    if (!native || !native.isNative || !root) {
+      return { ok: true, persisted: false, reason: "浏览器预览无法写入磁盘，请用桌面版" };
+    }
+    try {
+      const ok = await native.createSkillDir(root, skill.name, dir);
+      return { ok: true, persisted: !!ok, reason: ok ? "" : "磁盘创建失败" };
+    } catch (err) {
+      return { ok: true, persisted: false, reason: String((err && err.message) || err) };
+    }
+  }
+
+  /**
+   * 删除空文件夹记录（只删索引里的 dirs，不动磁盘；磁盘由系统自行处理）。
+   */
+  function removeSkillDir(skillId, dirName) {
+    const skill = getSkill(skillId);
+    if (!skill) return { ok: false, reason: "技能不存在" };
+    const dir = String(dirName || "").trim();
+    if (!Array.isArray(skill.dirs) || skill.dirs.indexOf(dir) < 0) {
+      return { ok: false, reason: "文件夹不存在" };
+    }
+    const prefix = dir.replace(/\/$/, "") + "/";
+    if ((skill.files || []).some((f) => f.name.indexOf(prefix) === 0)) {
+      return { ok: false, reason: "文件夹里还有文件，不能删除" };
+    }
+    skill.dirs = skill.dirs.filter((d) => d !== dir);
+    persist();
+    emit("dir-deleted");
+    return { ok: true };
+  }
+
+  /**
    * 保存单个文件（新增或修改），改内存后立即尝试落盘。
    * 落盘失败不影响内存中的编辑结果，由调用方按 persisted 决定提示语气。
    */
@@ -1643,6 +1703,8 @@
     addSource,
     updateSource,
     removeSource,
+    createSkillDir,
+    removeSkillDir,
     addCategory,
     updateCategory,
     removeCategory,
