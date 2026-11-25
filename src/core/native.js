@@ -75,28 +75,57 @@
       }
     },
 
-    /** 无边框窗口控制：优先自写命令，失败时回退 Tauri 官方 window API */
+    /**
+     * 无边框窗口控制。
+     * 依次尝试：自写命令 -> 官方 plugin 命令 -> 官方 window API。
+     * 返回 { ok, error }，error 是最后一条真实报错，便于界面直接显示原因。
+     */
     async windowAction(action) {
-      if (!isNative) return false;
+      if (!isNative) return { ok: false, error: "非桌面环境" };
+      const errors = [];
+
+      // ⚠️ 按钮 data-win 是 min/max/close，Rust 命令匹配 minimize/maximize/close。
+      // 历史版本就是这里没映射，自写命令永远返回「未知的窗口操作」。
+      const act = { min: "minimize", max: "maximize", close: "close" }[action] || action;
+
+      // 1) 自写命令（Rust 侧直接操作窗口，不需要前端权限）
       try {
-        await invoke("window_action", { action });
-        return true;
+        await invoke("window_action", { action: act });
+        return { ok: true };
       } catch (err) {
-        console.warn("[native] window_action 失败，尝试官方 API", err);
+        errors.push("自定义命令：" + (err && err.message || err));
       }
+
+      // 2) 官方 plugin 命令（走 capabilities 权限）
+      const cmd = { minimize: "plugin:window|minimize", maximize: "plugin:window|toggle_maximize", close: "plugin:window|close" }[act];
+      if (cmd) {
+        try {
+          await invoke(cmd, { label: "main" });
+          return { ok: true };
+        } catch (err) {
+          errors.push("官方命令 " + cmd + "：" + (err && err.message || err));
+        }
+      }
+
+      // 3) 官方 window API 对象
       try {
         const W = T && T.window;
         const win = W && (W.getCurrentWindow ? W.getCurrentWindow() : W.currentWindow);
-        if (!win) return false;
-        if (action === "minimize") await win.minimize();
-        else if (action === "maximize") await win.toggleMaximize();
-        else if (action === "close") await win.close();
-        else return false;
-        return true;
-      } catch (err2) {
-        console.warn("[native] 官方 window API 也失败", err2);
-        return false;
+        if (win) {
+          if (act === "minimize") await win.minimize();
+          else if (act === "maximize") await win.toggleMaximize();
+          else if (act === "close") await win.close();
+          else return { ok: false, error: "未知操作" };
+          return { ok: true };
+        }
+        errors.push("官方 window 对象不可用");
+      } catch (err) {
+        errors.push("官方 API：" + (err && err.message || err));
       }
+
+      const detail = errors.join(" | ");
+      console.warn("[native] 窗口操作全部失败", detail);
+      return { ok: false, error: detail };
     },
 
     /** 运行环境：是否便携版、数据实际落在哪里 */

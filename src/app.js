@@ -222,14 +222,16 @@
         const act = btn.dataset.win;
         if (SH.native && SH.native.isNative) {
           try {
-            const ok = await SH.native.windowAction(act);
-            if (!ok) toast("窗口操作未执行，请检查桌面版权限", "error");
-            else if (act === "maximize") {
-              // 切换后再查一次状态，更新图标提示（Rust 命令不回传状态）
+            const res = await SH.native.windowAction(act);
+            if (!res || !res.ok) {
+              // 直接显示真实报错，不再用模糊的「检查权限」提示
+              toast("窗口操作失败：" + ((res && res.error) || "未知原因"), "error");
+            } else if (act === "maximize") {
+              // 切换后再查一次状态，更新图标提示（命令不回传状态）
               setTimeout(syncMaximizeButton, 260);
             }
           } catch (err) {
-            toast("窗口操作失败：" + (err && err.message || err), "error");
+            toast("窗口操作异常：" + (err && err.message || err), "error");
           }
           return;
         }
