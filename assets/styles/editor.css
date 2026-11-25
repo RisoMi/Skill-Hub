@@ -5,18 +5,27 @@
    ------------------------------------------------------------ */
 
 .se-root {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
+  /* 工作区内的 flex 视图：占满侧栏右侧，标题栏 / 状态栏照常显示 */
   display: none;
-  background: var(--bg);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  background: var(--surface);
 }
 
 .se-root.is-open {
   display: block;
 }
 
-/* 编辑器打开时锁住背景滚动 */
+/* 编辑态：隐藏列表区与详情区，只留侧栏 + 编辑器 */
+.workspace.is-editing-embedded > .content,
+.workspace.is-editing-embedded > .inspector,
+.workspace.is-editing-embedded > .vline {
+  display: none;
+}
+
+/* 回收站仍用 body class 锁背景滚动 */
 body.is-editing-skill {
   overflow: hidden;
 }

@@ -48,7 +48,8 @@
     root = document.createElement("div");
     root.id = "skillEditorRoot";
     root.className = "se-root";
-    document.body.appendChild(root);
+    // 内嵌到工作区（标题栏 / 侧栏 / 状态栏保持可见），不再 body 全屏覆盖
+    (document.querySelector(".workspace") || document.body).appendChild(root);
     root.addEventListener("click", onClick);
     root.addEventListener("input", onInput);
     root.addEventListener("keydown", onKeydownInRoot);
@@ -552,7 +553,8 @@
       files[0];
     state.file = preferred ? preferred.name : null;
 
-    document.body.classList.add("is-editing-skill");
+    const workspace = document.querySelector(".workspace");
+    if (workspace) workspace.classList.add("is-editing-embedded");
     root.classList.add("is-open");
     document.addEventListener("keydown", onKeydown);
     render();
@@ -565,7 +567,8 @@
     state.dirty = {};
     state.newMode = false;
     state.error = "";
-    document.body.classList.remove("is-editing-skill");
+    const workspace = document.querySelector(".workspace");
+    if (workspace) workspace.classList.remove("is-editing-embedded");
     document.removeEventListener("keydown", onKeydown);
     if (root) {
       root.classList.remove("is-open");
