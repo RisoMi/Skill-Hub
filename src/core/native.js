@@ -63,14 +63,26 @@
       return invoke("remove_skill", { dir });
     },
 
-    /** 无边框窗口控制 */
+    /** 无边框窗口控制：优先自写命令，失败时回退 Tauri 官方 window API */
     async windowAction(action) {
       if (!isNative) return false;
       try {
         await invoke("window_action", { action });
         return true;
       } catch (err) {
-        console.warn("[native] window_action 失败", err);
+        console.warn("[native] window_action 失败，尝试官方 API", err);
+      }
+      try {
+        const W = T && T.window;
+        const win = W && (W.getCurrentWindow ? W.getCurrentWindow() : W.currentWindow);
+        if (!win) return false;
+        if (action === "minimize") await win.minimize();
+        else if (action === "maximize") await win.toggleMaximize();
+        else if (action === "close") await win.close();
+        else return false;
+        return true;
+      } catch (err2) {
+        console.warn("[native] 官方 window API 也失败", err2);
         return false;
       }
     },

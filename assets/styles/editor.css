@@ -18,7 +18,8 @@
   display: block;
 }
 
-/* 编辑态：隐藏列表区与详情区，只留侧栏 + 编辑器 */
+/* 编辑态：工作区全宽给编辑器，侧栏 / 列表 / 详情 / 分隔线全部收起 */
+.workspace.is-editing-embedded > .sidebar,
 .workspace.is-editing-embedded > .content,
 .workspace.is-editing-embedded > .inspector,
 .workspace.is-editing-embedded > .vline {

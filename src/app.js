@@ -8,6 +8,17 @@
 
   const $ = (id) => document.getElementById(id);
 
+  /** 最大化按钮：按窗口当前宽度近似判断（无原生状态查询时够用） */
+  function syncMaximizeButton() {
+    const btn = document.querySelector('[data-win="max"]');
+    if (!btn) return;
+    const wide = window.innerWidth >= window.screen.availWidth - 4;
+    btn.dataset.maximized = wide ? "true" : "false";
+    btn.title = wide ? "还原窗口" : "最大化";
+    const rect = btn.querySelector("rect");
+    if (rect) rect.setAttribute("stroke-dasharray", wide ? "2 1" : "");
+  }
+
   /* ---------------- 主题与平台 ---------------- */
   function applyPrefs() {
     const prefs = store.state.prefs;
@@ -203,16 +214,29 @@
     });
     $("clearSelectionBtn").addEventListener("click", () => store.clearChecks());
 
-    // 桌面端接管系统窗口；浏览器预览只做提示，不伪造系统行为
+    // 桌面端接管系统窗口；浏览器预览给出明确提示，绝不静默失败
     document.querySelectorAll("[data-win]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const act = btn.dataset.win;
         if (SH.native && SH.native.isNative) {
-          await SH.native.windowAction(btn.dataset.win);
+          try {
+            const ok = await SH.native.windowAction(act);
+            if (!ok) toast("窗口操作未执行，请检查桌面版权限", "error");
+            else if (act === "maximize") {
+              // 切换后再查一次状态，更新图标提示（Rust 命令不回传状态）
+              setTimeout(syncMaximizeButton, 260);
+            }
+          } catch (err) {
+            toast("窗口操作失败：" + (err && err.message || err), "error");
+          }
           return;
         }
         toast("浏览器预览中不可用；桌面版会交给系统窗口处理", "info");
       });
     });
+    syncMaximizeButton();
   }
 
   /* ---------------- 快捷键 ---------------- */
@@ -318,10 +342,11 @@
       if (store.state.prefs.theme === "system") applyPrefs();
     });
 
-    // 窗口尺寸变化时收起窄屏详情
+    // 窗口尺寸变化时收起窄屏详情，并同步最大化按钮状态
     window.addEventListener("resize", debounce(() => {
       const panel = document.getElementById("inspector");
       if (window.innerWidth > 1180) panel.classList.remove("is-open");
+      syncMaximizeButton();
     }, 160));
 
     // 桌面端：启动后扫描本机真实 SKILL 目录
