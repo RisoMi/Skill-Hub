@@ -579,6 +579,32 @@ body.is-editing-skill {
   color: var(--text-4);
 }
 
+/* 文件夹行操作：常驻可见（不再复用 hover 才显示的 .se-file__del） */
+.se-dir__act {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-3);
+  opacity: 1;
+  transition: background 0.12s var(--ease), color 0.12s var(--ease);
+}
+
+.se-dir-row:hover .se-dir__act { color: var(--text-2); }
+
+.se-dir__act:hover {
+  background: var(--chip-bg);
+  color: var(--accent);
+}
+
+.se-dir__act--danger:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
 .se-dir__children {
   padding-left: 16px;
   border-left: 1px solid var(--line);

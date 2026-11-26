@@ -27,6 +27,8 @@
     newMode: false,
     /** newMode: "file" | "dir"，决定输入框语义 */
     createKind: "file",
+    /** 从某个文件夹行的「＋」进入时，预填的父目录 */
+    newDirParent: "",
     /** 折叠的目录名集合 */
     collapsedDirs: {},
     error: "",
@@ -150,7 +152,9 @@
               <span class="truncate">${esc(d)}</span>
               <span class="se-dir__count">${inDir.length}</span>
             </button>
-            <button class="se-file__del" data-act="delete-dir" data-dir="${esc(d)}"
+            <button class="se-dir__act" data-act="new-subdir" data-dir="${esc(d)}"
+                    title="在 ${esc(d)} 下新建子文件夹">${SH.icons.svg("plus", 12)}</button>
+            <button class="se-dir__act se-dir__act--danger" data-act="delete-dir" data-dir="${esc(d)}"
                     title="删除文件夹 ${esc(d)}">${SH.icons.svg("trash", 12)}</button>
           </div>
           ${collapsed ? "" : `<div class="se-dir__children">${childFiles.map(fileRowHtml).join("")}</div>`}
@@ -277,7 +281,9 @@
               state.newMode
                 ? `<div class="se-new">
                      <input id="seNewFile" class="se-new__input"
-                            placeholder="${state.createKind === "dir" ? "references/drafts" : "references/notes.md"}"
+                            placeholder="${state.createKind === "dir"
+                              ? (state.newDirParent ? state.newDirParent + "/子文件夹" : "references/drafts")
+                              : "references/notes.md"}"
                             autocomplete="off" spellcheck="false">
                      <button class="se-btn se-btn--tiny" data-act="create">创建</button>
                      <button class="se-icon" data-act="cancel-new" title="取消">
@@ -422,8 +428,14 @@
 
   async function createFile() {
     const input = root.querySelector("#seNewFile");
-    const raw = (input ? input.value : "").trim().replace(/\\/g, "/");
+    let raw = (input ? input.value : "").trim().replace(/\\/g, "/");
     const isDir = state.createKind === "dir";
+    // 从文件夹行进入时：没写父路径就自动补上，写了则从父路径起算
+    if (isDir && state.newDirParent) {
+      const p = state.newDirParent.replace(/\/$/, "");
+      if (!raw) raw = p + "/";
+      else if (raw.indexOf(p + "/") !== 0) raw = p + "/" + raw;
+    }
     const name = isDir ? raw.replace(/^\/+|\/+$/g, "") : raw;
     if (!name) {
       state.error = isDir ? "文件夹名不能为空" : "文件名不能为空";
@@ -441,6 +453,7 @@
         return;
       }
       state.newMode = false;
+      state.newDirParent = "";
       state.error = "";
       render();
       SH.toast(res.persisted ? `已创建文件夹 ${name}` : `已创建 ${name}（未写入磁盘：${res.reason || "请用桌面版"}）`,
@@ -520,13 +533,20 @@
     if (act === "format-json") return formatJson();
     if (act === "make-meta") return void makeMeta();
 
-    if (act === "new") {
+    if (act === "new" || act === "new-subdir") {
       state.newMode = true;
-      state.createKind = el.dataset.kind === "dir" ? "dir" : "file";
+      state.createKind = act === "new-subdir" || el.dataset.kind === "dir" ? "dir" : "file";
+      state.newDirParent = act === "new-subdir" ? (el.dataset.dir || "") : "";
       state.error = "";
       render();
       const input = root.querySelector("#seNewFile");
-      if (input) input.focus();
+      if (input) {
+        // 子文件夹：预填父路径 + 斜杠，光标落在末尾，用户接着打名字即可
+        if (state.newDirParent) input.value = state.newDirParent.replace(/\/$/, "") + "/";
+        input.focus();
+        const v = input.value;
+        input.setSelectionRange(v.length, v.length);
+      }
       return;
     }
     if (act === "toggle-dir") {
@@ -555,6 +575,7 @@
     }
     if (act === "cancel-new") {
       state.newMode = false;
+      state.newDirParent = "";
       return render();
     }
     if (act === "create") return void createFile();
@@ -636,6 +657,7 @@
     state.error = "";
     state.newMode = false;
     state.createKind = "file";
+    state.newDirParent = "";
     state.collapsedDirs = {};
     state.split = true;
 
@@ -662,6 +684,7 @@
     state.dirty = {};
     state.newMode = false;
     state.createKind = "file";
+    state.newDirParent = "";
     state.collapsedDirs = {};
     state.error = "";
     const workspace = document.querySelector(".workspace");
